@@ -1,5 +1,3 @@
-# Practice Git
+# test_Readme.md
 
-## hi my name is minsu
-
-### feat/minsu pull request
+## 민수의 Readme.md
