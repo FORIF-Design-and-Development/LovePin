@@ -1,0 +1,3 @@
+DB_HOST: jdbc:mysql://localhost:3306/lovepin?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+DB_USERNAME: root
+DB_PASSWORD: "1234" # 숫자로만 된 비밀번호는 문자열임을 명시하기 위해 따옴표 사용 권장
