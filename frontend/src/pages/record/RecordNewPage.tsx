@@ -1,276 +1,294 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, MapPin, Search, Calendar, Heart, User, X } from "lucide-react";
-import { toast } from "sonner";
+/**
+ * LovePin AddRecord Page
+ * Design: Emotional Minimalism — form-based record creation
+ * Features: photo upload, date picker, place search, tags, record type
+ */
+import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export default function RecordNewPage() {
+import { useApp, type MemoryRecord, type RecordTag, type RecordType } from '@/contexts/AppContext';
+import { toast } from 'sonner';
+
+interface AddRecordProps {
+  editRecord?: MemoryRecord;
+}
+
+const PLACE_SUGGESTIONS = [
+  { name: '서울숲', address: '서울 성동구 뚝섬로 273', lat: 37.5445, lng: 127.0374, district: '성동구' },
+  { name: '성수 카페거리', address: '서울 성동구 성수이로 77', lat: 37.5448, lng: 127.0558, district: '성동구' },
+  { name: '한강공원', address: '서울 영등포구 여의동로 330', lat: 37.5283, lng: 126.9322, district: '영등포구' },
+  { name: '경복궁', address: '서울 종로구 사직로 161', lat: 37.5796, lng: 126.9770, district: '종로구' },
+  { name: '연남동 골목길', address: '서울 마포구 연남동', lat: 37.5617, lng: 126.9239, district: '마포구' },
+  { name: '북촌 한옥마을', address: '서울 종로구 계동길 37', lat: 37.5826, lng: 126.9836, district: '종로구' },
+  { name: '이태원 거리', address: '서울 용산구 이태원로', lat: 37.5344, lng: 126.9944, district: '용산구' },
+  { name: '홍대 거리', address: '서울 마포구 홍익로', lat: 37.5563, lng: 126.9237, district: '마포구' },
+];
+
+const DEMO_PHOTOS = [
+  'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&q=80',
+  'https://d2xsxph8kpxj0f.cloudfront.net/310519663666287881/a6vhHtyQsDTNyBG78iJnQM/lovepin-memory-cafe-YoutCYFe6tHz66i2VDGW3W.webp',
+  'https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=400&q=80',
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80',
+];
+
+export default function AddRecordPage({ editRecord }: AddRecordProps) {
+  const { addRecord, updateRecord, coupleStatus } = useApp();
   const navigate = useNavigate();
-  
-  // ==========================================
-  // 1. 상태 관리 (State)
-  // ==========================================
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [visitDate, setVisitDate] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [recordType, setRecordType] = useState<"COUPLE" | "INDIVIDUAL">("COUPLE");
-  
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [repPhotoIndex, setRepPhotoIndex] = useState(0);
+
+  const [title, setTitle] = useState(editRecord?.title || '');
+  const [photos, setPhotos] = useState<string[]>(editRecord?.photos || []);
+  const [repPhoto, setRepPhoto] = useState(editRecord?.representativePhoto || 0);
+  const [visitDate, setVisitDate] = useState(editRecord?.visitDate || new Date().toISOString().split('T')[0]);
+  const [place, setPlace] = useState(editRecord ? { name: editRecord.place, address: editRecord.address, lat: editRecord.lat, lng: editRecord.lng, district: editRecord.district } : null as null | typeof PLACE_SUGGESTIONS[0]);
+  const [placeSearch, setPlaceSearch] = useState(editRecord?.place || '');
+  const [showPlaceSearch, setShowPlaceSearch] = useState(false);
+  const [tags, setTags] = useState<RecordTag[]>(editRecord?.tags || []);
+  const [recordType, setRecordType] = useState<RecordType>(editRecord?.recordType || '개별 기록');
+  const [content, setContent] = useState(editRecord?.content || '');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [place, setPlace] = useState<{ name: string; address: string; lat: number; lng: number } | null>(null);
-  const [showLocationSearch, setShowLocationSearch] = useState(false);
-  const [searchKeyword, setSearchKeyword] = useState("");
+  const isValid = title.trim() && photos.length > 0 && visitDate && place && tags.length > 0;
 
-  const today = new Date().toISOString().split("T")[0];
-  const isFormValid = title.trim() && photos.length > 0 && visitDate && place && tags.length > 0;
-
-  // ==========================================
-  // 2. 액션 핸들러 및 API 연동 포인트
-  // ==========================================
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    if (photos.length + files.length > 10) {
-      toast.error("사진은 최대 10장까지만 업로드할 수 있어요.");
-      return;
+  const handleAddPhoto = () => {
+    // Demo: add a random photo from demo set
+    const available = DEMO_PHOTOS.filter(p => !photos.includes(p));
+    if (available.length > 0 && photos.length < 10) {
+      setPhotos(prev => [...prev, available[0]]);
     }
-
-    const newPhotos = Array.from(files).map(file => URL.createObjectURL(file));
-    setPhotos(prev => [...prev, ...newPhotos]);
   };
 
   const handleRemovePhoto = (idx: number) => {
     setPhotos(prev => prev.filter((_, i) => i !== idx));
-    if (repPhotoIndex >= idx && repPhotoIndex > 0) setRepPhotoIndex(prev => prev - 1);
+    if (repPhoto >= idx && repPhoto > 0) setRepPhoto(prev => prev - 1);
   };
 
-  const handlePlaceSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchKeyword.trim()) return;
-    // 🚨 TODO: 장소 검색 로직
+  const toggleTag = (tag: RecordTag) => {
+    setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
-  const handleSubmit = async () => {
-    if (!isFormValid || !place) return;
-    // 🚨 TODO: [API 연동] 새 기록 등록
-    toast.success("기록이 등록되었어요!");
-    setTimeout(() => navigate("/app/timeline"), 300); // 완료 후 타임라인으로 이동
+  const handleSave = () => {
+    if (!isValid || !place) return;
+    if (editRecord) {
+      updateRecord(editRecord.id, { title, photos, representativePhoto: repPhoto, visitDate, place: place.name, address: place.address, lat: place.lat, lng: place.lng, district: place.district, tags, recordType, content });
+      toast.success('기록이 수정되었어요');
+      navigate(`/app/record/${editRecord.id}`);
+    } else {
+      const newRecord = addRecord({ title, photos, representativePhoto: repPhoto, visitDate, place: place.name, address: place.address, lat: place.lat, lng: place.lng, district: place.district, tags, recordType, content });
+      toast.success('기록이 등록되었어요');
+      navigate(`/app/record/${newRecord.id}`);
+    }
   };
+
+  const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="h-full flex flex-col bg-background relative">
-      
-      {/* 🔹 상단 헤더 (개별 페이지 헤더) */}
-      <div className="px-6 py-4 bg-background sticky top-0 z-10 flex items-center justify-between border-b border-border/50">
-        <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-foreground hover:bg-input-background rounded-full transition-colors">
-          <ArrowLeft size={24} />
-        </button>
-        <h1 className="text-[18px] font-bold text-foreground">새 기록 추가</h1>
-        <div className="w-10" />
+    <div style={{ background: '#FAFAFA', minHeight: '100dvh' }}>
+      {/* Header */}
+      <div style={{ background: 'white', padding: '56px 20px 16px', borderBottom: '1px solid #F0F2F4', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <button onClick={() => window.history.back()} style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#191F28', letterSpacing: '-0.3px' }}>
+            {editRecord ? '기록 수정' : '새 기록 추가'}
+          </h1>
+          <div style={{ width: 32 }} />
+        </div>
       </div>
 
-      {/* 🔹 스크롤 폼 영역 (하단 탭바 높이만큼 pb-32 추가) */}
-      <div className="flex-1 overflow-y-auto px-5 py-6 pb-[120px] space-y-6">
-        
-        {/* 섹션 1: 제목 및 사진 */}
-        <div className="card-emotional p-6">
-          <div className="mb-6">
-            <label className="text-[14px] font-semibold text-foreground block mb-2">
-              제목 <span className="text-primary">*</span>
-            </label>
-            <input
-              className="lp-input"
-              type="text"
-              placeholder="제목을 입력하세요 (최대 30자)"
-              maxLength={30}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <p className="text-[12px] text-muted-foreground text-right mt-1.5">{title.length}/30</p>
-          </div>
+      <div style={{ padding: '20px 20px 100px' }}>
+        {/* Title */}
+        <FormSection label="제목" required>
+          <input
+            className="lp-input"
+            placeholder="제목을 입력하세요 (최대 30자)"
+            value={title}
+            maxLength={30}
+            onChange={e => setTitle(e.target.value)}
+          />
+          <p style={{ fontSize: 12, color: '#C5CDD6', textAlign: 'right', marginTop: 4 }}>{title.length}/30</p>
+        </FormSection>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[14px] font-semibold text-foreground">
-                사진 <span className="text-primary">*</span>
-              </label>
-              <span className="text-[12px] text-muted-foreground">{photos.length}/10</span>
-            </div>
-            
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
-              {photos.length < 10 && (
+        {/* Photos */}
+        <FormSection label="사진" required>
+          <div className="photo-strip" style={{ paddingBottom: 4 }}>
+            {/* Add button */}
+            <button
+              onClick={handleAddPhoto}
+              style={{ flexShrink: 0, width: 80, height: 80, borderRadius: 12, border: '2px dashed #E5E8EB', background: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C5CDD6" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span style={{ fontSize: 11, color: '#C5CDD6' }}>{photos.length}/10</span>
+            </button>
+            {photos.map((photo, i) => (
+              <div key={i} style={{ flexShrink: 0, width: 80, height: 80, borderRadius: 12, overflow: 'hidden', position: 'relative', border: i === repPhoto ? '2.5px solid #f76e7e' : '2.5px solid transparent' }}>
+                <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {photos.length > 1 && (
+                  <button
+                    onClick={() => setRepPhoto(i)}
+                    style={{ position: 'absolute', bottom: 4, left: 4, background: i === repPhoto ? '#f76e7e' : 'rgba(0,0,0,0.4)', border: 'none', borderRadius: 4, padding: '2px 5px', fontSize: 10, color: 'white', fontWeight: 600 }}
+                  >
+                    {i === repPhoto ? '대표' : '선택'}
+                  </button>
+                )}
                 <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="shrink-0 w-[84px] h-[84px] rounded-[14px] border-2 border-dashed border-border bg-input-background flex flex-col items-center justify-center gap-1 hover:bg-border/50 transition-colors"
+                  onClick={() => handleRemovePhoto(i)}
+                  style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Upload size={20} className="text-muted-foreground" />
-                  <span className="text-[11px] text-muted-foreground font-medium">추가</span>
-                </button>
-              )}
-
-              {photos.map((photo, idx) => (
-                <div key={idx} className={`shrink-0 w-[84px] h-[84px] rounded-[14px] overflow-hidden relative border-2 ${idx === repPhotoIndex ? 'border-primary' : 'border-transparent'}`}>
-                  <img src={photo} alt="" className="w-full h-full object-cover" />
-                  <button onClick={() => setRepPhotoIndex(idx)} className={`absolute bottom-1.5 left-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm ${idx === repPhotoIndex ? 'bg-primary text-white' : 'bg-black/40 text-white/90'}`}>
-                    {idx === repPhotoIndex ? '대표' : '선택'}
-                  </button>
-                  <button onClick={() => handleRemovePhoto(idx)} className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-sm">
-                    <X size={12} className="text-white" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-          </div>
-        </div>
-
-        {/* 섹션 2: 언제 어디서 */}
-        <div className="card-emotional p-6">
-          <div className="mb-6">
-            <label className="text-[14px] font-semibold text-foreground block mb-2">
-              방문 날짜 <span className="text-primary">*</span>
-            </label>
-            <div className="relative">
-              <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <input className="lp-input !pl-11 w-full" type="date" max={today} value={visitDate} onChange={(e) => setVisitDate(e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[14px] font-semibold text-foreground block mb-2">
-              장소 <span className="text-primary">*</span>
-            </label>
-            {place ? (
-              <div className="bg-input-background rounded-[12px] p-4 flex items-center justify-between">
-                <div className="flex gap-3 items-center overflow-hidden pr-2">
-                  <MapPin size={20} className="shrink-0 text-primary" />
-                  <div className="truncate">
-                    <p className="text-[14px] font-bold text-foreground mb-0.5 truncate">{place.name}</p>
-                    <p className="text-[12px] text-muted-foreground truncate">{place.address}</p>
-                  </div>
-                </div>
-                <button onClick={() => setPlace(null)} className="shrink-0 text-[13px] font-bold text-primary hover:underline">
-                  변경
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-            ) : (
+            ))}
+          </div>
+          <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} />
+        </FormSection>
+
+        {/* Visit Date */}
+        <FormSection label="방문 날짜" required>
+          <button
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            style={{ width: '100%', background: '#F4F6F8', border: '1.5px solid transparent', borderRadius: 12, padding: '14px 16px', fontSize: 15, color: visitDate ? '#191F28' : '#C5CDD6', textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <span>{visitDate ? visitDate.replace(/-/g, '.') : '날짜를 선택하세요'}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B95A1" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </button>
+          {showDatePicker && (
+            <input
+              type="date"
+              max={today}
+              value={visitDate}
+              onChange={e => { setVisitDate(e.target.value); setShowDatePicker(false); }}
+              style={{ marginTop: 8, width: '100%', background: '#F4F6F8', border: '1.5px solid #f76e7e', borderRadius: 12, padding: '14px 16px', fontSize: 15, color: '#191F28' }}
+            />
+          )}
+        </FormSection>
+
+        {/* Place */}
+        <FormSection label="장소" required>
+          {place ? (
+            <div style={{ background: '#F4F6F8', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 600, color: '#191F28', marginBottom: 2 }}>{place.name}</p>
+                <p style={{ fontSize: 13, color: '#8B95A1' }}>{place.address}</p>
+              </div>
+              <button onClick={() => { setPlace(null); setPlaceSearch(''); setShowPlaceSearch(true); }} style={{ background: 'none', border: 'none', color: '#f76e7e', fontSize: 13, fontWeight: 600 }}>변경</button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="lp-input"
+                  placeholder="장소명, 주소, 상호 검색"
+                  value={placeSearch}
+                  onChange={e => { setPlaceSearch(e.target.value); setShowPlaceSearch(true); }}
+                  onFocus={() => setShowPlaceSearch(true)}
+                />
+                <svg style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5CDD6" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
+              {showPlaceSearch && (
+                <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', marginTop: 4, overflow: 'hidden', maxHeight: 200, overflowY: 'auto' }}>
+                  {PLACE_SUGGESTIONS.filter(p => !placeSearch || p.name.includes(placeSearch) || p.address.includes(placeSearch)).map(p => (
+                    <button
+                      key={p.name}
+                      onClick={() => { setPlace(p); setPlaceSearch(p.name); setShowPlaceSearch(false); }}
+                      style={{ display: 'block', width: '100%', padding: '12px 16px', background: 'none', border: 'none', textAlign: 'left', borderBottom: '1px solid #F4F6F8' }}
+                    >
+                      <p style={{ fontSize: 14, fontWeight: 600, color: '#191F28', marginBottom: 2 }}>{p.name}</p>
+                      <p style={{ fontSize: 12, color: '#8B95A1' }}>{p.address}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </FormSection>
+
+        {/* Tags */}
+        <FormSection label="태그" required>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(['여행', '일상', '데이트'] as RecordTag[]).map(tag => (
+              <button key={tag} onClick={() => toggleTag(tag)} className={`tag-chip ${tags.includes(tag) ? 'selected' : ''}`}>{tag}</button>
+            ))}
+          </div>
+          {tags.length === 0 && <p style={{ fontSize: 12, color: '#C5CDD6', marginTop: 6 }}>최소 1개 이상 선택해주세요</p>}
+        </FormSection>
+
+        {/* Record Type */}
+        <FormSection label="기록 유형" required>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setRecordType('개별 기록')}
+              className={`tag-chip ${recordType === '개별 기록' ? 'selected' : ''}`}
+            >
+              개별 기록
+            </button>
+            {coupleStatus === 'coupled' && (
               <button
-                onClick={() => setShowLocationSearch(true)}
-                className="w-full bg-input-background border border-border rounded-[12px] h-[52px] px-4 flex items-center gap-2.5 text-muted-foreground hover:bg-border/50 transition-colors"
+                onClick={() => setRecordType('커플 기록')}
+                className={`tag-chip ${recordType === '커플 기록' ? 'selected' : ''}`}
               >
-                <Search size={18} />
-                <span className="text-[14px]">장소를 검색해 주세요</span>
+                커플 기록
               </button>
             )}
           </div>
-        </div>
+          {coupleStatus !== 'coupled' && (
+            <p style={{ fontSize: 12, color: '#C5CDD6', marginTop: 6 }}>커플 모드에서 커플 기록을 작성할 수 있어요</p>
+          )}
+        </FormSection>
 
-        {/* 섹션 3: 분류 */}
-        <div className="card-emotional p-6">
-          <div className="mb-6">
-            <label className="text-[14px] font-semibold text-foreground block mb-3">
-              태그 <span className="text-primary">*</span>
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {['여행', '일상', '데이트'].map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
-                  className={`px-4 h-[40px] rounded-full text-[13px] font-bold transition-all border ${
-                    tags.includes(tag) ? 'bg-primary/5 text-primary border-primary shadow-sm' : 'bg-input-background text-muted-foreground border-transparent'
-                  }`}
-                >
-                  #{tag}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[14px] font-semibold text-foreground block mb-3">
-              기록 유형 <span className="text-primary">*</span>
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setRecordType("COUPLE")}
-                className={`flex-1 h-[48px] rounded-xl text-[14px] font-bold transition-all border flex items-center justify-center gap-1.5 ${
-                  recordType === "COUPLE" ? "bg-primary text-white border-primary shadow-sm" : "bg-input-background text-muted-foreground border-transparent"
-                }`}
-              >
-                <Heart size={16} fill={recordType === "COUPLE" ? "currentColor" : "none"} /> 커플
-              </button>
-              <button
-                onClick={() => setRecordType("INDIVIDUAL")}
-                className={`flex-1 h-[48px] rounded-xl text-[14px] font-bold transition-all border flex items-center justify-center gap-1.5 ${
-                  recordType === "INDIVIDUAL" ? "bg-foreground text-background border-foreground shadow-sm" : "bg-input-background text-muted-foreground border-transparent"
-                }`}
-              >
-                <User size={16} /> 개별
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 섹션 4: 본문 */}
-        <div className="card-emotional p-6">
-          <label className="text-[14px] font-semibold text-foreground block mb-2">
-            본문 <span className="text-muted-foreground font-normal ml-1">(선택)</span>
-          </label>
+        {/* Content */}
+        <FormSection label="본문">
           <textarea
-            className="lp-input w-full"
-            placeholder="추억을 자유롭게 남겨보세요."
+            className="lp-input"
+            placeholder="기록에 대한 이야기를 남겨보세요 (선택)"
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            rows={5}
             maxLength={500}
-            style={{ resize: "none", height: "auto" }}
+            onChange={e => setContent(e.target.value)}
+            rows={4}
+            style={{ resize: 'none', lineHeight: 1.6 }}
           />
-          <p className="text-[12px] text-muted-foreground text-right mt-1.5">{content.length}/500</p>
-        </div>
-
-        {/* 💡 하단 탭바에 안 가리게 스크롤 제일 밑에 버튼을 자연스럽게 배치 */}
-        <button onClick={handleSubmit} disabled={!isFormValid} className="btn-primary mt-4">
-          기록 저장
-        </button>
-
+          <p style={{ fontSize: 12, color: '#C5CDD6', textAlign: 'right', marginTop: 4 }}>{content.length}/500</p>
+        </FormSection>
       </div>
 
-      {/* 🔹 장소 검색 바텀시트 */}
-      {showLocationSearch && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center animate-fade-in" onClick={() => setShowLocationSearch(false)}>
-          <div className="bg-card rounded-t-[28px] p-6 w-full max-h-[85vh] h-[80vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="w-12 h-1.5 bg-border rounded-full mx-auto mb-6 shrink-0" />
-            
-            <form onSubmit={handlePlaceSearch} className="relative mb-6 shrink-0">
-              <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input type="text" autoFocus placeholder="장소명, 주소를 검색하세요" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} className="lp-input !pl-12 w-full" />
-            </form>
+      {/* Save button - fixed */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '100%',
+        maxWidth: 430,
+        paddingBottom: editRecord ? 'max(12px, env(safe-area-inset-bottom))' : 72,
+        paddingTop: 12,
+        paddingLeft: 20,
+        paddingRight: 20,
+        background: '#FAFAFA',
+        borderTop: '1px solid #F0F2F4',
+        zIndex: 20
+      }}>
+        <button
+          className="btn-primary"
+          onClick={handleSave}
+          disabled={!isValid}
+          style={{ background: isValid ? '#f76e7e' : '#E5E8EB', color: isValid ? 'white' : '#8B95A1' }}
+        >
+          {editRecord ? '수정 완료' : '기록 저장'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {[
-                { name: "서울숲", address: "서울 성동구 뚝섬로 273", lat: 37.5448, lng: 127.0557 },
-                { name: "성수 카페거리", address: "서울 성동구 연무장길 일대", lat: 37.5422, lng: 127.0544 },
-                { name: "한강공원", address: "서울 용산구 이촌동", lat: 37.5212, lng: 126.9697 },
-              ].map((p, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => { setPlace(p); setShowLocationSearch(false); }}
-                  className="w-full p-4 rounded-xl hover:bg-input-background text-left transition-colors flex items-center gap-3"
-                >
-                  <MapPin size={20} className="text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-[15px] font-bold text-foreground mb-0.5">{p.name}</p>
-                    <p className="text-[13px] text-muted-foreground">{p.address}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+function FormSection({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <label style={{ fontSize: 14, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 8 }}>
+        {label}
+        {required && <span style={{ color: '#f76e7e', marginLeft: 2 }}>*</span>}
+      </label>
+      {children}
     </div>
   );
 }

@@ -1,253 +1,331 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom"; // 💡 useLocation 추가
-import { User, ChevronRight, Bell, LogOut, Trash2, X } from "lucide-react";
-import { toast } from "sonner";
+/**
+ * LovePin Settings Page
+ * Design: Emotional Minimalism — clean settings with profile management
+ * Features: profile edit, email/password change, notifications, logout, delete account
+ */
+import { useState } from 'react';
+import { useApp } from '@/contexts/AppContext';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+
+type SettingsScreen = 'main' | 'edit-profile' | 'edit-email' | 'edit-password';
 
 export default function SettingsPage() {
+  const [screen, setScreen] = useState<SettingsScreen>('main');
+  if (screen === 'edit-profile') return <EditProfileScreen onBack={() => setScreen('main')} />;
+  if (screen === 'edit-email') return <EditEmailScreen onBack={() => setScreen('main')} />;
+  if (screen === 'edit-password') return <EditPasswordScreen onBack={() => setScreen('main')} />;
+  return <MainSettings onNavigate={setScreen} />;
+}
+
+function MainSettings({ onNavigate }: { onNavigate: (s: any) => void }) {
+  const { currentUser, logout } = useApp();
   const navigate = useNavigate();
-  const location = useLocation(); // 💡 라우터 상태 확인용
-  
-  // 상태 관리
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(currentUser?.notificationsEnabled ?? true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  
-  // 사용자 정보 상태 (API 연동 전 임시 데이터)
-  const [userInfo, setUserInfo] = useState({
-    nickname: "예빈",
-    email: "yebin@example.com",
-    provider: "LOCAL", // "LOCAL" (일반) 또는 "KAKAO" (카카오)
-    profileImgUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
-  });
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // 💡 프로필 수정 등 다른 페이지에서 넘어온 Toast 메시지 처리 로직
-  useEffect(() => {
-    if (location.state?.toastMessage) {
-      toast.success(location.state.toastMessage);
-      // 메시지를 띄운 후 state 초기화 (새로고침 시 무한 반복 방지)
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location, navigate]);
-
-  // 🚨 TODO: [API 연동] 내 프로필 조회 (GET /api/users/me)
-  useEffect(() => {
-    const fetchMyProfile = async () => {
-      /*
-      try {
-        const response = await api.get('/api/users/me');
-        setUserInfo(response.data);
-        setNotificationsEnabled(response.data.pushEnabled);
-      } catch (error) {
-        toast.error("프로필 정보를 불러오지 못했습니다.");
-      }
-      */
-    };
-    fetchMyProfile();
-  }, []);
-
-  // 🚨 TODO: [API 연동] 알림 설정 변경 (PATCH /api/users/me/push)
-  const handleTogglePush = async () => {
-    const newValue = !notificationsEnabled;
-    setNotificationsEnabled(newValue);
-    /*
-    try {
-      await api.patch('/api/users/me/push', { pushEnabled: newValue });
-      toast.success(`알림이 ${newValue ? '켜졌습니다' : '꺼졌습니다'}.`);
-    } catch (error) {
-      setNotificationsEnabled(!newValue); // 실패 시 원상복구
-      toast.error("알림 설정 변경에 실패했습니다.");
-    }
-    */
+  const handleLogout = () => {
+    logout();
+    navigate('/auth');
+    toast.success('로그아웃되었어요');
   };
 
-  // 🚨 TODO: [API 연동] 로그아웃 (POST /api/auth/logout)
-  const handleLogout = async () => {
-    /*
-    try {
-      await api.post('/api/auth/logout');
-      // localStorage.removeItem('accessToken');
-    } catch (error) {
-      console.error(error);
-    }
-    */
-    toast.success("로그아웃되었어요");
-    setShowLogoutModal(false);
-    setTimeout(() => navigate("/auth/login"), 300);
-  };
-
-  // 🚨 TODO: [API 연동] 계정 삭제 (DELETE /api/users/me)
-  const handleDeleteAccount = async () => {
-    /*
-    try {
-      await api.delete('/api/users/me');
-      // localStorage.removeItem('accessToken');
-    } catch (error) {
-      toast.error("계정 삭제에 실패했습니다.");
-      return;
-    }
-    */
-    toast.success("계정이 삭제되었어요");
-    setShowDeleteModal(false);
-    setTimeout(() => navigate("/auth/login"), 300);
+  const handleDeleteAccount = () => {
+    logout();
+    navigate('/auth');
+    toast.success('계정이 삭제되었어요');
   };
 
   return (
-    <div className="h-full flex flex-col bg-background pb-[65px]">
-      
-      {/* 🔹 상단 헤더 */}
-      <div className="px-5 pt-12 pb-4 bg-background sticky top-0 z-10 border-b border-border/50">
-        <h1 className="text-[22px] font-bold text-foreground tracking-[-0.5px]">설정</h1>
+    <div style={{ background: '#FAFAFA', minHeight: '100dvh' }}>
+      {/* Header */}
+      <div style={{ background: 'white', padding: '56px 20px 16px', borderBottom: '1px solid #F0F2F4', position: 'sticky', top: 0, zIndex: 10 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#191F28', letterSpacing: '-0.5px' }}>설정</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5">
-        
-        {/* 1. 프로필 카드 */}
-        <div className="card-emotional p-5">
-          <div className="flex items-center gap-4">
-            <div className="w-[60px] h-[60px] rounded-full bg-secondary flex items-center justify-center overflow-hidden border-[3px] border-accent shrink-0">
-              {userInfo.profileImgUrl ? (
-                <img src={userInfo.profileImgUrl} alt="프로필" className="w-full h-full object-cover" />
-              ) : (
-                <User size={28} className="text-muted-foreground" />
-              )}
+      <div style={{ padding: '20px 20px 100px' }}>
+        {/* Profile card */}
+        <div className="lp-card" style={{ padding: '20px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', overflow: 'hidden', border: '3px solid #FFF0F1', flexShrink: 0 }}>
+              <img src={currentUser?.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <div>
-              <p className="text-[18px] font-bold text-foreground mb-0.5 tracking-tight">{userInfo.nickname}</p>
-              <p className="text-[13px] text-muted-foreground mb-1.5">{userInfo.email}</p>
-              <span className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-md ${
-                userInfo.provider === 'KAKAO' ? 'bg-[#FEE500] text-black' : 'bg-input-background text-muted-foreground'
-              }`}>
-                {userInfo.provider === 'KAKAO' ? '카카오 계정' : '일반 계정'}
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#191F28', marginBottom: 2 }}>{currentUser?.nickname}</p>
+              <p style={{ fontSize: 13, color: '#8B95A1', marginBottom: 4 }}>{currentUser?.email}</p>
+              <span style={{ background: '#F4F6F8', color: '#8B95A1', borderRadius: 6, fontSize: 11, fontWeight: 600, padding: '2px 8px' }}>
+                {currentUser?.accountType === 'kakao' ? '카카오 계정' : '일반 계정'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* 2. 계정 관리 메뉴 */}
-        <div className="card-emotional overflow-hidden">
-          <p className="text-[12px] font-bold text-muted-foreground pt-4 pb-2 px-5 tracking-wide uppercase">계정 관리</p>
-          
-          <button 
-            onClick={() => navigate('/app/settings/profile')}
-            className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-input-background transition-colors"
-          >
-            <div className="text-left">
-              <p className="text-[15px] font-semibold text-foreground mb-0.5">프로필 수정</p>
-              <p className="text-[12px] text-muted-foreground">사진, 닉네임 변경</p>
-            </div>
-            <ChevronRight size={18} className="text-muted-foreground" />
-          </button>
-          
-          <div className="h-[1px] bg-border/50 mx-5" />
-          
-          <button 
-            onClick={() => navigate('/app/settings/email')}
-            className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-input-background transition-colors"
-          >
-            <div className="text-left">
-              <p className="text-[15px] font-semibold text-foreground mb-0.5">이메일 수정</p>
-              <p className="text-[12px] text-muted-foreground">{userInfo.email}</p>
-            </div>
-            <ChevronRight size={18} className="text-muted-foreground" />
-          </button>
-
-          <div className="h-[1px] bg-border/50 mx-5" />
-
-          <button 
-            onClick={() => navigate('/app/settings/password')}
-            className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-input-background transition-colors"
-          >
-            <div className="text-left">
-              <p className="text-[15px] font-semibold text-foreground mb-0.5">비밀번호 변경</p>
-              <p className="text-[12px] text-muted-foreground">
-                {userInfo.provider === 'KAKAO' ? '카카오 계정은 앱 내 변경 불가' : '현재 비밀번호 확인 후 변경'}
-              </p>
-            </div>
-            <ChevronRight size={18} className="text-muted-foreground" />
-          </button>
+        {/* Account settings */}
+        <div className="lp-card" style={{ marginBottom: 16, overflow: 'hidden' }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: '#8B95A1', padding: '14px 20px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>계정 관리</p>
+          {[
+            { label: '프로필 수정', sub: '사진, 닉네임 변경', action: () => onNavigate('edit-profile') },
+            { label: '이메일 수정', sub: currentUser?.email, action: () => onNavigate('edit-email') },
+            { label: '비밀번호 변경', sub: currentUser?.accountType === 'kakao' ? '카카오 계정은 변경 불가' : '현재 비밀번호 확인 후 변경', action: () => onNavigate('edit-password') },
+          ].map((item, i) => (
+            <button
+              key={i}
+              onClick={item.action}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', width: '100%', borderTop: i > 0 ? '1px solid #F0F2F4' : 'none' }}
+            >
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ fontSize: 15, fontWeight: 500, color: '#191F28', marginBottom: 2 }}>{item.label}</p>
+                {item.sub && <p style={{ fontSize: 12, color: '#8B95A1' }}>{item.sub}</p>}
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5CDD6" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          ))}
         </div>
 
-        {/* 3. 알림 설정 */}
-        <div className="card-emotional overflow-hidden">
-          <p className="text-[12px] font-bold text-muted-foreground pt-4 pb-2 px-5 tracking-wide uppercase">알림</p>
-          <div className="px-5 py-3.5 flex items-center justify-between">
-            <div className="text-left">
-              <p className="text-[15px] font-semibold text-foreground mb-0.5">앱 푸시 알림</p>
-              <p className="text-[12px] text-muted-foreground">매칭, 기록 관련 알림 수신</p>
+        {/* Notification settings */}
+        <div className="lp-card" style={{ marginBottom: 16, overflow: 'hidden' }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: '#8B95A1', padding: '14px 20px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>알림</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 500, color: '#191F28', marginBottom: 2 }}>알림 설정</p>
+              <p style={{ fontSize: 12, color: '#8B95A1' }}>매칭, 기록 관련 알림 수신</p>
             </div>
-            
             <button
-              onClick={handleTogglePush}
-              className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${
-                notificationsEnabled ? "bg-primary" : "bg-border"
-              }`}
+              onClick={() => setNotifEnabled(!notifEnabled)}
+              style={{
+                width: 48,
+                height: 28,
+                borderRadius: 14,
+                background: notifEnabled ? '#f76e7e' : '#E5E8EB',
+                border: 'none',
+                position: 'relative',
+                transition: 'background 0.2s',
+                flexShrink: 0,
+              }}
             >
-              <div
-                className={`absolute top-[3px] w-[22px] h-[22px] rounded-full bg-white shadow-sm transition-all ${
-                  notificationsEnabled ? "left-[23px]" : "left-[3px]"
-                }`}
-              />
+              <div style={{
+                width: 22,
+                height: 22,
+                borderRadius: '50%',
+                background: 'white',
+                position: 'absolute',
+                top: 3,
+                left: notifEnabled ? 23 : 3,
+                transition: 'left 0.2s',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+              }} />
             </button>
           </div>
         </div>
 
-        {/* 4. 기타 영역 */}
-        <div className="card-emotional overflow-hidden">
+        {/* Logout & Delete */}
+        <div className="lp-card" style={{ overflow: 'hidden' }}>
           <button
             onClick={() => setShowLogoutModal(true)}
-            className="w-full px-5 py-4 flex items-center justify-between hover:bg-input-background transition-colors"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', width: '100%' }}
           >
-            <p className="text-[15px] font-semibold text-foreground">로그아웃</p>
-            <LogOut size={16} className="text-muted-foreground" />
+            <p style={{ fontSize: 15, fontWeight: 500, color: '#191F28' }}>로그아웃</p>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5CDD6" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
-          
-          <div className="h-[1px] bg-border/50 mx-5" />
-          
+          <div style={{ height: 1, background: '#F0F2F4', margin: '0 20px' }} />
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="w-full px-5 py-4 flex items-center justify-between hover:bg-red-50 transition-colors"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'none', border: 'none', width: '100%' }}
           >
-            <p className="text-[15px] font-semibold text-destructive">계정 삭제</p>
-            <Trash2 size={16} className="text-destructive" />
+            <p style={{ fontSize: 15, fontWeight: 500, color: '#f76e7e' }}>계정 삭제</p>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f76e7e" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
 
-        <p className="text-center text-[12px] text-muted-foreground pt-4 pb-8">LovePin v1.0.0</p>
+        <p style={{ textAlign: 'center', fontSize: 12, color: '#C5CDD6', marginTop: 24 }}>LovePin v1.0.0</p>
       </div>
 
-      {/* 🔹 로그아웃 모달 */}
+      {/* Logout modal */}
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 animate-fade-in" onClick={() => setShowLogoutModal(false)}>
-          <div className="bg-card rounded-[24px] p-7 max-w-[320px] w-full text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="w-14 h-14 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-              <LogOut size={24} className="text-muted-foreground" />
-            </div>
-            <h3 className="text-[18px] font-bold text-foreground mb-2">로그아웃하시겠어요?</h3>
-            <p className="text-[14px] text-muted-foreground mb-8 leading-[1.5]">다시 로그인하여 서비스를<br/>이용하실 수 있습니다.</p>
-            <div className="flex gap-2.5">
-              <button onClick={() => setShowLogoutModal(false)} className="flex-1 bg-input-background text-foreground font-bold rounded-[14px] py-4 hover:bg-border/50 transition-colors">취소</button>
-              <button onClick={handleLogout} className="flex-1 btn-primary !w-auto">로그아웃</button>
+        <>
+          <div className="overlay-bg" onClick={() => setShowLogoutModal(false)} />
+          <div className="modal-center">
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#191F28', marginBottom: 8, textAlign: 'center' }}>로그아웃</h3>
+            <p style={{ fontSize: 14, color: '#8B95A1', textAlign: 'center', marginBottom: 24 }}>정말 로그아웃하시겠어요?</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowLogoutModal(false)} style={{ flex: 1, background: '#F4F6F8', color: '#191F28', border: 'none', borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600 }}>취소</button>
+              <button onClick={handleLogout} className="btn-primary" style={{ flex: 1 }}>로그아웃</button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
-      {/* 🔹 계정 삭제 모달 */}
+      {/* Delete account modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6 animate-fade-in" onClick={() => setShowDeleteModal(false)}>
-          <div className="bg-card rounded-[24px] p-7 max-w-[320px] w-full text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={24} className="text-destructive" />
-            </div>
-            <h3 className="text-[18px] font-bold text-foreground mb-2">계정을 삭제할까요?</h3>
-            <p className="text-[14px] text-muted-foreground mb-8 leading-[1.5]">계정을 삭제하면 복구할 수 없어요.<br/>모든 기록이 영구적으로 삭제됩니다.</p>
-            <div className="flex gap-2.5">
-              <button onClick={() => setShowDeleteModal(false)} className="flex-1 bg-input-background text-foreground font-bold rounded-[14px] py-4 hover:bg-border/50 transition-colors">취소</button>
-              <button onClick={handleDeleteAccount} className="flex-1 bg-destructive text-white font-bold rounded-[14px] py-4 hover:bg-destructive/90 transition-colors shadow-md shadow-destructive/20">계정 삭제</button>
+        <>
+          <div className="overlay-bg" onClick={() => setShowDeleteModal(false)} />
+          <div className="modal-center">
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#191F28', marginBottom: 8, textAlign: 'center' }}>계정을 삭제할까요?</h3>
+            <p style={{ fontSize: 14, color: '#8B95A1', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>계정을 삭제하면 복구할 수 없어요.</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, background: '#F4F6F8', color: '#191F28', border: 'none', borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600 }}>취소</button>
+              <button onClick={handleDeleteAccount} style={{ flex: 1, background: '#f76e7e', color: 'white', border: 'none', borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600 }}>계정 삭제</button>
             </div>
           </div>
-        </div>
+        </>
       )}
+    </div>
+  );
+}
+
+function EditProfileScreen({ onBack }: { onBack: () => void }) {
+  const { currentUser } = useApp();
+  const [nickname, setNickname] = useState(currentUser?.nickname || '');
+
+  return (
+    <div style={{ background: '#FAFAFA', minHeight: '100dvh' }}>
+      <div style={{ background: 'white', padding: '56px 20px 16px', borderBottom: '1px solid #F0F2F4' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#191F28' }}>프로필 수정</h1>
+        </div>
+      </div>
+      <div style={{ padding: '32px 20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto' }}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', border: '3px solid #FFF0F1' }}>
+              <img src={currentUser?.profileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+            <button style={{ position: 'absolute', bottom: 0, right: 0, background: '#f76e7e', border: 'none', borderRadius: '50%', width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>닉네임</label>
+          <input className="lp-input" value={nickname} onChange={e => setNickname(e.target.value)} maxLength={20} />
+          <p style={{ fontSize: 12, color: '#C5CDD6', textAlign: 'right', marginTop: 4 }}>{nickname.length}/20</p>
+        </div>
+        <button className="btn-primary" onClick={() => { onBack(); toast.success('프로필이 수정되었어요'); }}>저장</button>
+      </div>
+    </div>
+  );
+}
+
+function EditEmailScreen({ onBack }: { onBack: () => void }) {
+  const { currentUser } = useApp();
+  const [currentPw, setCurrentPw] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [step, setStep] = useState<'verify' | 'change'>(currentUser?.accountType === 'kakao' ? 'change' : 'verify');
+
+  if (currentUser?.accountType === 'kakao') {
+    return (
+      <div style={{ background: '#FAFAFA', minHeight: '100dvh' }}>
+        <div style={{ background: 'white', padding: '56px 20px 16px', borderBottom: '1px solid #F0F2F4' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={onBack} style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#191F28' }}>이메일 수정</h1>
+          </div>
+        </div>
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <div style={{ width: 64, height: 64, background: '#FEE500', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="#191F28"><path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.636 1.627 4.952 4.07 6.306L5.2 20.1a.5.5 0 0 0 .72.55l4.43-2.96A11.5 11.5 0 0 0 12 18c5.523 0 10-3.477 10-7.5S17.523 3 12 3z"/></svg>
+          </div>
+          <p style={{ fontSize: 16, fontWeight: 600, color: '#191F28', marginBottom: 8 }}>카카오 계정은 앱 내 수정이 불가해요</p>
+          <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 32 }}>카카오 계정 이메일은 카카오에서 변경해주세요</p>
+          <button className="btn-primary" onClick={onBack}>확인</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: '#FAFAFA', minHeight: '100dvh' }}>
+      <div style={{ background: 'white', padding: '56px 20px 16px', borderBottom: '1px solid #F0F2F4' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#191F28' }}>이메일 수정</h1>
+        </div>
+      </div>
+      <div style={{ padding: '32px 20px' }}>
+        {step === 'verify' ? (
+          <>
+            <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 24 }}>현재 비밀번호를 확인해주세요</p>
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>현재 비밀번호</label>
+              <input className="lp-input" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="현재 비밀번호 입력" />
+            </div>
+            <button className="btn-primary" onClick={() => setStep('change')} disabled={!currentPw} style={{ background: currentPw ? '#f76e7e' : '#E5E8EB', color: currentPw ? 'white' : '#8B95A1' }}>확인</button>
+          </>
+        ) : (
+          <>
+            <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 24 }}>새 이메일을 입력해주세요</p>
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>새 이메일</label>
+              <input className="lp-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="새 이메일 입력" />
+            </div>
+            <button className="btn-primary" onClick={() => { onBack(); toast.success('이메일이 변경되었어요. 다시 로그인해주세요.'); }} disabled={!newEmail.includes('@')} style={{ background: newEmail.includes('@') ? '#f76e7e' : '#E5E8EB', color: newEmail.includes('@') ? 'white' : '#8B95A1' }}>변경 완료</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EditPasswordScreen({ onBack }: { onBack: () => void }) {
+  const { currentUser } = useApp();
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+
+  if (currentUser?.accountType === 'kakao') {
+    return (
+      <div style={{ background: '#FAFAFA', minHeight: '100dvh' }}>
+        <div style={{ background: 'white', padding: '56px 20px 16px', borderBottom: '1px solid #F0F2F4' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={onBack} style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#191F28' }}>비밀번호 변경</h1>
+          </div>
+        </div>
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <p style={{ fontSize: 16, fontWeight: 600, color: '#191F28', marginBottom: 8 }}>카카오 계정은 앱 내 변경이 불가해요</p>
+          <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 32 }}>카카오에서 비밀번호를 변경해주세요</p>
+          <button className="btn-primary" onClick={onBack}>확인</button>
+        </div>
+      </div>
+    );
+  }
+
+  const isValid = currentPw && newPw.length >= 8 && newPw === confirmPw;
+
+  return (
+    <div style={{ background: '#FAFAFA', minHeight: '100dvh' }}>
+      <div style={{ background: 'white', padding: '56px 20px 16px', borderBottom: '1px solid #F0F2F4' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', padding: '4px 8px 4px 0' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#191F28' }}>비밀번호 변경</h1>
+        </div>
+      </div>
+      <div style={{ padding: '32px 20px' }}>
+        {[
+          { label: '현재 비밀번호', value: currentPw, onChange: setCurrentPw, placeholder: '현재 비밀번호 입력' },
+          { label: '새 비밀번호', value: newPw, onChange: setNewPw, placeholder: '8자 이상 입력' },
+          { label: '새 비밀번호 확인', value: confirmPw, onChange: setConfirmPw, placeholder: '새 비밀번호 다시 입력' },
+        ].map((field, i) => (
+          <div key={i} style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>{field.label}</label>
+            <input className="lp-input" type="password" value={field.value} onChange={e => field.onChange(e.target.value)} placeholder={field.placeholder} />
+          </div>
+        ))}
+        {confirmPw && newPw !== confirmPw && <p style={{ fontSize: 12, color: '#f76e7e', marginBottom: 16 }}>비밀번호가 일치하지 않아요.</p>}
+        <button className="btn-primary" onClick={() => { onBack(); toast.success('비밀번호가 변경되었어요. 다시 로그인해주세요.'); }} disabled={!isValid} style={{ background: isValid ? '#f76e7e' : '#E5E8EB', color: isValid ? 'white' : '#8B95A1' }}>변경 완료</button>
+      </div>
     </div>
   );
 }
