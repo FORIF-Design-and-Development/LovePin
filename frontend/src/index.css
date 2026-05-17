@@ -1,113 +1,211 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@custom-variant dark (&:is(.dark *));
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* =============================================
+   LovePin Design System — Emotional Minimalism
+   Primary: #f76e7e (coral-pink)
+   Background: #FAFAFA / white
+   Text: #191F28 / #8B95A1 / #C5CDD6
+   Font: Pretendard Variable
+   ============================================= */
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* 1. 디자인 시스템 변수 정의 (Tailwind v4 호환 방식) */
+@theme {
+  --color-primary: #f76e7e;
+  --color-primary-foreground: #ffffff;
+  
+  --color-background: #FAFAFA;
+  --color-foreground: #191F28;
+  
+  --color-card: #ffffff;
+  --color-card-foreground: #191F28;
+  
+  --color-secondary: #F4F6F8;
+  --color-secondary-foreground: #191F28;
+  
+  --color-muted: #F4F6F8;
+  --color-muted-foreground: #8B95A1;
+  
+  --color-accent: #FFF0F1;
+  --color-accent-foreground: #f76e7e;
+  
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  
+  --color-border: #E5E8EB;
+  --color-input-background: #F4F6F8;
+  
+  --radius-sm: 0.5rem;   /* 8px */
+  --radius-md: 0.75rem;  /* 12px */
+  --radius-lg: 1rem;     /* 16px */
+  --radius-xl: 1.25rem;  /* 20px */
+}
 
-  @media (max-width: 1024px) {
+/* 2. 전역 스타일 및 초기화 */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  
+  body {
+    background-color: #F0F2F4; /* PC 환경 배경색 */
+    color: var(--color-foreground);
+    font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none; /* 당겨서 새로고침 등 네이티브 스크롤 효과 방지 */
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  a[href],
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* 스크롤바 숨김 처리 (전역) */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 3. 모바일 레이아웃 래퍼 */
+@layer components {
+  /* PC에서도 모바일 비율을 유지해주는 최상위 래퍼 (AppLayout이나 main.tsx 적용 권장) */
+  .mobile-wrapper {
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    position: relative;
+    background-color: var(--color-background);
+    box-shadow: 0 0 40px rgba(0,0,0,0.08);
+    overflow-x: hidden;
+  }
+
+  /* 하단 안전 영역 패딩 (아이폰 홈 인디케이터 공간 확보) */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+}
+
+/* =============================================
+   LovePin Custom Components (Utility Classes)
+   ============================================= */
+
+@layer utilities {
+  /* Emotional Card */
+  .card-emotional {
+    background-color: var(--color-card);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* Buttons */
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border: none;
+    border-radius: var(--radius-lg); /* 14px~16px 느낌 */
     font-size: 16px;
+    font-weight: 700;
+    padding: 16px;
+    width: 100%;
+    transition: all 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+    font-family: inherit;
+    letter-spacing: -0.3px;
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .btn-primary:disabled {
+    background-color: var(--color-border);
+    color: var(--color-muted-foreground);
+    cursor: not-allowed;
+  }
+
+  /* Inputs */
+  .lp-input {
+    width: 100%;
+    background-color: var(--color-input-background);
+    border: 1.5px solid transparent;
+    border-radius: var(--radius-md); /* 12px */
+    padding: 14px 16px;
+    font-size: 15px;
+    color: var(--color-foreground);
+    font-family: inherit;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .lp-input:focus {
+    border-color: var(--color-primary);
+    background-color: var(--color-card);
+  }
+  .lp-input::placeholder {
+    color: #C5CDD6;
+  }
+
+  /* Badges */
+  .badge-couple {
+    background-color: var(--color-accent);
+    color: var(--color-primary);
+    border-radius: var(--radius-sm); /* 8px */
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+  .badge-personal {
+    background-color: var(--color-secondary);
+    color: var(--color-muted-foreground);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    white-space: nowrap;
+  }
+
+  /* Animation Classes */
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.25s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  }
+  .animate-scale-in {
+    animation: scaleIn 0.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  }
+  .page-enter {
+    animation: pageSlideIn 0.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+/* Keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
-body {
-  margin: 0;
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+@keyframes pageSlideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
 }
