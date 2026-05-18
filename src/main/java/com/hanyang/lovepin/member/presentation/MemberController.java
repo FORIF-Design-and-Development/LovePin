@@ -19,20 +19,21 @@ public class MemberController {
     private final MemberService memberService;
 
     // 1. 서버 동작 확인을 위한 Health Check API
-    // GET http://lovepin-api.ap-northeast-2.elasticbeanstalk.com/api/members/health
+    // 🚀 새 도메인 반영 주소: GET https://lovepin-api.hee.io.kr/api/members/health
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
         return ResponseEntity.ok("Member 도메인 서비스가 정상적으로 동작 중입니다.");
     }
 
     // 2. 전체 회원 목록 조회 API (JSON 반환)
-    // GET http://lovepin-api.ap-northeast-2.elasticbeanstalk.com/api/members
+    // 🚀 새 도메인 반영 주소: GET https://lovepin-api.hee.io.kr/api/members
     @GetMapping
     public ResponseEntity<List<User>> getAllMembers() {
         return ResponseEntity.ok(memberService.findAllMembers());
     }
 
     // 3. 특정 회원 상세 조회 API
+    // 🚀 새 도메인 반영 주소: GET https://lovepin-api.hee.io.kr/api/members/{id}
     @GetMapping("/{id}")
     public ResponseEntity<User> getMember(@PathVariable Long id) {
         return ResponseEntity.ok(memberService.findMemberById(id));
