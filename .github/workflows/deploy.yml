@@ -41,7 +41,7 @@ jobs:
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          region: ${{ secrets.AWS_REGION }}
+          region: ap-northeast-2
           # ⚠️ 멘토님께 확인받아야 할 이름들
           application_name: lovepin-backend
           environment_name: lovepin-backend-env
@@ -55,5 +55,5 @@ jobs:
             SPRING_DATASOURCE_DRIVER_CLASS_NAME=${{ secrets.SPRING_DATASOURCE_DRIVER_CLASS_NAME }}
             AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_REGION=${{ secrets.AWS_REGION }}
+            AWS_REGION=ap-northeast-2
             AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
