@@ -39,4 +39,12 @@ public class RefreshToken {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    public static RefreshToken create(User user, String token, LocalDateTime expiresAt) {
+        RefreshToken rt = new RefreshToken();
+        rt.user = user;
+        rt.token = token;
+        rt.expiresAt = expiresAt;
+        return rt;
+    }
 }
