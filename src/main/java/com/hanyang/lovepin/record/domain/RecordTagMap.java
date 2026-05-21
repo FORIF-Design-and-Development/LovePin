@@ -26,4 +26,11 @@ public class RecordTagMap {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tag_id", nullable = false)
     private Tag tag;
+
+    public static RecordTagMap create(Record record, Tag tag) {
+        RecordTagMap map = new RecordTagMap();
+        map.record = record;
+        map.tag = tag;
+        return map;
+    }
 }
