@@ -82,7 +82,7 @@ export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { notifications } = useApp();
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const activeTab = location.pathname.startsWith('/app/timeline') ? 'timeline'
     : location.pathname.startsWith('/app/map') ? 'map'
