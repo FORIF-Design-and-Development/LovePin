@@ -37,3 +37,6 @@ out/
 .vscode/
 
 .env
+
+# Nested duplicate project at repo root only (case-insensitive FS 주의)
+/LovePin/
