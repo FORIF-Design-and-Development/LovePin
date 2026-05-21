@@ -13,8 +13,8 @@ type ZoomLevel = 'city' | 'district' | 'detail';
 interface PinData {
   id: string;
   name: string;
-  lat: number;
-  lng: number;
+  latitude: number;
+  longitude: number;
   records: MemoryRecord[];
   type: 'city' | 'district' | 'place';
 }
@@ -26,28 +26,29 @@ export default function MapPage() {
   const [activeCardIdx, setActiveCardIdx] = useState(0);
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>('district');
   const [showFilter, setShowFilter] = useState(false);
-  const [filterType, setFilterType] = useState<'all' | 'couple' | 'personal'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'COUPLE' | 'INDIVIDUAL'>('all');
   const mapRef = useRef<MockMapRef | null>(null);
 
   const filteredRecords = records.filter(r => {
-    if (filterType === 'couple') return r.recordType === '커플 기록';
-    if (filterType === 'personal') return r.recordType === '개별 기록';
+    if (filterType === 'COUPLE') return r.recordType === 'COUPLE';
+    if (filterType === 'INDIVIDUAL') return r.recordType === 'INDIVIDUAL';
     return true;
   });
 
   // 줌 레벨에 따른 핀 데이터 생성
   const getPinsForZoomLevel = (): PinData[] => {
     if (zoomLevel === 'city') {
-      // 시/군 단위 그룹핑
+      // 시/군 단위 그룹핑 (명세서의 city, district 기준, 임시 파싱)
       const cityGroups: Record<string, PinData> = {};
       filteredRecords.forEach(r => {
-        const city = r.district.includes('구') ? '서울' : r.district.split(' ')[0];
+        // 실제 API 연동 시 백엔드의 region_1depth 등을 활용
+        const city = r.placeAddress.split(' ')[0] || '서울';
         if (!cityGroups[city]) {
           cityGroups[city] = {
             id: city,
             name: city,
-            lat: r.lat,
-            lng: r.lng,
+            latitude: r.latitude,
+            longitude: r.longitude,
             records: [],
             type: 'city',
           };
@@ -59,34 +60,35 @@ export default function MapPage() {
       // 구/동 단위 그룹핑
       const districtGroups: Record<string, PinData> = {};
       filteredRecords.forEach(r => {
-        if (!districtGroups[r.district]) {
-          districtGroups[r.district] = {
-            id: r.district,
-            name: r.district,
-            lat: r.lat,
-            lng: r.lng,
+        const district = r.placeAddress.split(' ')[1] || '중구';
+        if (!districtGroups[district]) {
+          districtGroups[district] = {
+            id: district,
+            name: district,
+            latitude: r.latitude,
+            longitude: r.longitude,
             records: [],
             type: 'district',
           };
         }
-        districtGroups[r.district].records.push(r);
+        districtGroups[district].records.push(r);
       });
       return Object.values(districtGroups);
     } else {
       // 상세 위치 (개별 장소)
       const placeGroups: Record<string, PinData> = {};
       filteredRecords.forEach(r => {
-        if (!placeGroups[r.place]) {
-          placeGroups[r.place] = {
-            id: r.place,
-            name: r.place,
-            lat: r.lat,
-            lng: r.lng,
+        if (!placeGroups[r.placeName]) {
+          placeGroups[r.placeName] = {
+            id: r.placeName,
+            name: r.placeName,
+            latitude: r.latitude,
+            longitude: r.longitude,
             records: [],
             type: 'place',
           };
         }
-        placeGroups[r.place].records.push(r);
+        placeGroups[r.placeName].records.push(r);
       });
       return Object.values(placeGroups);
     }
@@ -102,7 +104,7 @@ export default function MapPage() {
     setSelectedPin(pin);
     setActiveCardIdx(0);
     if (mapRef.current) {
-      mapRef.current.panTo({ lat: pin.lat, lng: pin.lng });
+      mapRef.current.panTo({ lat: pin.latitude, lng: pin.longitude });
     }
   };
 
@@ -133,8 +135,8 @@ export default function MapPage() {
   }, [zoomLevel]);
 
   const getMapLabel = () => {
-    if (zoomLevel === 'city') return '서울 전체';
-    if (zoomLevel === 'district') return '구/동 보기';
+    if (zoomLevel === 'city') return '전체 지도';
+    if (zoomLevel === 'district') return '현재 지도 범위';
     return '상세 위치';
   };
 
@@ -152,7 +154,9 @@ export default function MapPage() {
           <div className="absolute inset-0 pointer-events-none">
             {pins.map((pin) => {
               const count = pin.records.length;
-              const repPhoto = pin.records[0]?.photos[0];
+              // API 규격 반영: 대표 사진 판별 로직 수정
+              const repPhotoObj = pin.records[0]?.photos.find(p => p.isRepresentative) || pin.records[0]?.photos[0];
+              const repPhoto = repPhotoObj?.imageUrl;
 
               // 기록 개수에 따른 핀 크기 결정 (강조)
               let pinSize: number;
@@ -161,9 +165,9 @@ export default function MapPage() {
               else if (count >= 3) pinSize = 56;
               else pinSize = 48;
 
-              // 위치 계산
-              const offsetX = (pin.lng - 126.9918) * 800;
-              const offsetY = (37.5519 - pin.lat) * 800;
+              // 위치 계산 (더미 맵 매핑 유지)
+              const offsetX = (pin.longitude - 126.9918) * 800;
+              const offsetY = (37.5519 - pin.latitude) * 800;
 
               return (
                 <div
@@ -357,8 +361,8 @@ export default function MapPage() {
         >
           {[
             { id: 'all', label: '전체' },
-            { id: 'couple', label: '커플 기록' },
-            { id: 'personal', label: '개별 기록' },
+            { id: 'COUPLE', label: '커플 기록' },
+            { id: 'INDIVIDUAL', label: '개별 기록' },
           ].map((opt) => (
             <button
               key={opt.id}
@@ -447,82 +451,90 @@ export default function MapPage() {
               scrollbarWidth: 'none',
             }}
           >
-            {selectedPin.records.map((record, i) => (
-              <div
-                key={record.id}
-                style={{
-                  flexShrink: 0,
-                  width: 200,
-                  background: 'rgba(255, 255, 255, 0.98)',
-                  backdropFilter: 'blur(20px)',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                  transform: i === activeCardIdx ? 'scale(1.03)' : 'scale(0.97)',
-                  transition: 'transform 0.2s',
-                  cursor: 'pointer',
-                  border: '1px solid rgba(255, 255, 255, 0.5)',
-                }}
-                onClick={() => setActiveCardIdx(i)}
-              >
-                <div style={{ height: 120, overflow: 'hidden' }}>
-                  <img
-                    src={record.photos[record.representativePhoto] || record.photos[0]}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                </div>
-                <div style={{ padding: '12px' }}>
-                  <p
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: '#191F28',
-                      marginBottom: 4,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {record.title}
-                  </p>
-                  <p style={{ fontSize: 12, color: '#8B95A1', marginBottom: 8 }}>
-                    {record.visitDate.replace(/-/g, '.')}
-                  </p>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/app/record/${record.id}`);
-                    }}
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(244, 93, 117, 0.15) 0%, rgba(233, 51, 79, 0.15) 100%)',
-                      color: '#e9334f',
-                      border: 'none',
-                      borderRadius: 8,
-                      padding: '6px 12px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    상세 보기
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+            {selectedPin.records.map((record, i) => {
+              // 대표 사진 찾기
+              const cardRepPhotoObj = record.photos.find(p => p.isRepresentative) || record.photos[0];
+              const cardRepPhoto = cardRepPhotoObj?.imageUrl;
+
+              return (
+                <div
+                  key={record.recordId}
+                  style={{
+                    flexShrink: 0,
+                    width: 200,
+                    background: 'rgba(255, 255, 255, 0.98)',
+                    backdropFilter: 'blur(20px)',
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    transform: i === activeCardIdx ? 'scale(1.03)' : 'scale(0.97)',
+                    transition: 'transform 0.2s',
+                    cursor: 'pointer',
+                    border: '1px solid rgba(255, 255, 255, 0.5)',
+                  }}
+                  onClick={() => setActiveCardIdx(i)}
+                >
+                  <div style={{ height: 120, overflow: 'hidden' }}>
+                    {cardRepPhoto && (
+                      <img
+                        src={cardRepPhoto}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    )}
+                  </div>
+                  <div style={{ padding: '12px' }}>
+                    <p
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: '#191F28',
+                        marginBottom: 4,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
                     >
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </button>
+                      {record.title}
+                    </p>
+                    <p style={{ fontSize: 12, color: '#8B95A1', marginBottom: 8 }}>
+                      {record.visitDate.replace(/-/g, '.')}
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/app/record/${record.recordId}`);
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(244, 93, 117, 0.15) 0%, rgba(233, 51, 79, 0.15) 100%)',
+                        color: '#e9334f',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '6px 12px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      상세 보기
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Dot indicator */}
