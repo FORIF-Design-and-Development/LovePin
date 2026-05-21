@@ -1,5 +1,5 @@
 /**
- * LovePin RecordDetail Page
+ * LovePin RecordDetail Page (API Integrated)
  * Design: Emotional Minimalism — full record view with photo carousel
  * Features: photo carousel, full-screen photo modal, edit/delete
  */
@@ -9,10 +9,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export default function RecordDetailPage() {
-  const { records, deleteRecord, currentUser } = useApp();
+  // API 스펙 반영: mode, myProfile 구조 사용
+  const { records, deleteRecord, mode } = useApp();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const record = records.find((r) => r.id === id);
+  
+  // API 스펙 반영: id(string) -> recordId(number) 변환 후 검색
+  const record = records.find((r) => r.recordId === Number(id));
 
   const [photoIdx, setPhotoIdx] = useState(0);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
@@ -27,7 +30,11 @@ export default function RecordDetailPage() {
     );
   }
 
-  const canEdit = record.recordType === '커플 기록' || record.author === currentUser?.nickname;
+  // API 스펙의 photos 배열 정렬
+  const sortedPhotos = [...record.photos].sort((a, b) => a.sequence - b.sequence);
+
+  // 백엔드 API 명세에 따른 수정/삭제 권한 제어
+  const canEdit = record.canEdit;
 
   const formatDate = (d: string) => {
     const date = new Date(d);
@@ -40,51 +47,53 @@ export default function RecordDetailPage() {
   };
 
   const handleDelete = () => {
-    deleteRecord(record.id);
+    deleteRecord(record.recordId);
     toast.success('기록이 삭제되었어요');
     navigate('/app/timeline');
   };
 
   return (
-    <div style={{ background: 'white', minHeight: '100dvh' }}>
+    <div className="page-enter" style={{ background: 'white', minHeight: '100dvh' }}>
       {/* Photo carousel */}
       <div style={{ position: 'relative', background: '#191F28' }}>
         <div style={{ height: 320, overflow: 'hidden', position: 'relative' }}>
-          <img
-            src={record.photos[photoIdx]}
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
-            onClick={() => setShowPhotoModal(true)}
-          />
+          {sortedPhotos.length > 0 && (
+            <img
+              src={sortedPhotos[photoIdx]?.imageUrl}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+              onClick={() => setShowPhotoModal(true)}
+            />
+          )}
           {/* Gradient overlay */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.2) 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.2) 100%)', pointerEvents: 'none' }} />
 
           {/* Back button */}
           <button
             onClick={() => window.history.back()}
-            style={{ position: 'absolute', top: 56, left: 16, background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}
+            style={{ position: 'absolute', top: 56, left: 16, background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', cursor: 'pointer' }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           </button>
 
           {/* Photo index */}
-          {record.photos.length > 1 && (
+          {sortedPhotos.length > 1 && (
             <div style={{ position: 'absolute', top: 60, right: 16, background: 'rgba(0,0,0,0.4)', borderRadius: 12, padding: '4px 10px', fontSize: 13, color: 'white', fontWeight: 600, backdropFilter: 'blur(4px)' }}>
-              {photoIdx + 1}/{record.photos.length}
+              {photoIdx + 1}/{sortedPhotos.length}
             </div>
           )}
         </div>
 
         {/* Photo thumbnails */}
-        {record.photos.length > 1 && (
-          <div style={{ display: 'flex', gap: 4, padding: '8px 16px', background: '#191F28' }}>
-            {record.photos.map((photo, i) => (
+        {sortedPhotos.length > 1 && (
+          <div style={{ display: 'flex', gap: 4, padding: '8px 16px', background: '#191F28', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {sortedPhotos.map((photo, i) => (
               <button
-                key={i}
+                key={photo.imageId}
                 onClick={() => setPhotoIdx(i)}
-                style={{ width: 48, height: 48, borderRadius: 8, overflow: 'hidden', border: i === photoIdx ? '2px solid #f76e7e' : '2px solid transparent', padding: 0, background: 'none' }}
+                style={{ flexShrink: 0, width: 48, height: 48, borderRadius: 8, overflow: 'hidden', border: i === photoIdx ? '2px solid #f76e7e' : '2px solid transparent', padding: 0, background: 'none', cursor: 'pointer' }}
               >
-                <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src={photo.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </button>
             ))}
           </div>
@@ -96,24 +105,35 @@ export default function RecordDetailPage() {
         {/* Title & badges */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#191F28', letterSpacing: '-0.5px', flex: 1, marginRight: 12, lineHeight: 1.3 }}>{record.title}</h1>
-          <span className={record.recordType === '커플 기록' ? 'badge-couple' : 'badge-personal'} style={{ flexShrink: 0 }}>{record.recordType}</span>
+          {/* API 스펙 연동: 커플 모드에서만 배지 노출 */}
+          {mode === 'couple' && (
+            <span style={{ 
+              flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 6,
+              background: record.recordType === 'COUPLE' ? '#FFF0F1' : '#F4F6F8', 
+              color: record.recordType === 'COUPLE' ? '#f76e7e' : '#8B95A1' 
+            }}>
+              {record.recordType === 'COUPLE' ? '커플 기록' : '개별 기록'}
+            </span>
+          )}
         </div>
 
         {/* Meta info */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24, padding: '16px', background: '#F4F6F8', borderRadius: 16 }}>
-          <MetaRow icon={<PinIcon />} label={record.place} sub={record.address} />
+          {/* API 스펙 변수명 연동: placeName, placeAddress */}
+          <MetaRow icon={<PinIcon />} label={record.placeName} sub={record.placeAddress} />
           <div style={{ height: 1, background: '#E5E8EB' }} />
           <MetaRow icon={<CalendarIcon />} label={formatDate(record.visitDate)} />
-          {record.recordType === '개별 기록' && (
+          {/* 요구사항 준수: 커플 모드 + 개별 기록일 때만 작성자 닉네임 노출 */}
+          {mode === 'couple' && record.recordType === 'INDIVIDUAL' && record.authorNickname && (
             <>
               <div style={{ height: 1, background: '#E5E8EB' }} />
-              <MetaRow icon={<PersonIcon />} label={`작성자: ${record.author}`} />
+              <MetaRow icon={<PersonIcon />} label={`작성자: ${record.authorNickname}`} />
             </>
           )}
         </div>
 
         {/* Tags */}
-        {record.tags.length > 0 && (
+        {record.tags && record.tags.length > 0 && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
             {record.tags.map(tag => (
               <span key={tag} style={{ fontSize: 13, color: '#f76e7e', background: '#FFF0F1', borderRadius: 8, padding: '4px 10px', fontWeight: 500 }}>#{tag}</span>
@@ -156,14 +176,14 @@ export default function RecordDetailPage() {
         }}>
           <div style={{ display: 'flex', gap: 10 }}>
             <button
-              onClick={() => navigate(`/app/record/${record.id}/edit`)}
-              style={{ flex: 1, background: '#F4F6F8', color: '#191F28', border: 'none', borderRadius: 14, padding: 14, fontSize: 15, fontWeight: 600 }}
+              onClick={() => navigate(`/app/record/${record.recordId}/edit`)}
+              style={{ flex: 1, background: '#F4F6F8', color: '#191F28', border: 'none', borderRadius: 14, padding: 14, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
             >
               수정
             </button>
             <button
               onClick={() => setShowDeleteModal(true)}
-              style={{ flex: 1, background: '#FFF0F1', color: '#f76e7e', border: 'none', borderRadius: 14, padding: 14, fontSize: 15, fontWeight: 600 }}
+              style={{ flex: 1, background: '#FFF0F1', color: '#f76e7e', border: 'none', borderRadius: 14, padding: 14, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
             >
               삭제
             </button>
@@ -174,34 +194,31 @@ export default function RecordDetailPage() {
       {/* Full-screen photo modal */}
       {showPhotoModal && (
         <>
-          <div style={{ position: 'fixed', inset: 0, background: 'black', zIndex: 100, display: 'flex', flexDirection: 'column' }}>
+          <div className="page-enter" style={{ position: 'fixed', inset: 0, background: 'black', zIndex: 100, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '56px 16px 16px' }}>
-              <span style={{ color: 'white', fontSize: 14, fontWeight: 600 }}>{photoIdx + 1}/{record.photos.length}</span>
+              <span style={{ color: 'white', fontSize: 14, fontWeight: 600 }}>{photoIdx + 1}/{sortedPhotos.length}</span>
               <div style={{ display: 'flex', gap: 12 }}>
-                <button style={{ background: 'none', border: 'none', color: 'white' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                </button>
-                <button onClick={() => setShowPhotoModal(false)} style={{ background: 'none', border: 'none', color: 'white' }}>
+                <button onClick={() => setShowPhotoModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
             </div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-              <img src={record.photos[photoIdx]} alt="" style={{ maxWidth: '100%', maxHeight: '70dvh', objectFit: 'contain' }} />
+              <img src={sortedPhotos[photoIdx]?.imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: '70dvh', objectFit: 'contain' }} />
               {photoIdx > 0 && (
-                <button onClick={() => setPhotoIdx(p => p - 1)} style={{ position: 'absolute', left: 16, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button onClick={() => setPhotoIdx(p => p - 1)} style={{ position: 'absolute', left: 16, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
               )}
-              {photoIdx < record.photos.length - 1 && (
-                <button onClick={() => setPhotoIdx(p => p + 1)} style={{ position: 'absolute', right: 16, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {photoIdx < sortedPhotos.length - 1 && (
+                <button onClick={() => setPhotoIdx(p => p + 1)} style={{ position: 'absolute', right: 16, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               )}
             </div>
-            {record.photos.length > 1 && (
+            {sortedPhotos.length > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 6, padding: '16px 0 40px' }}>
-                {record.photos.map((_, i) => (
+                {sortedPhotos.map((_, i) => (
                   <div key={i} style={{ width: i === photoIdx ? 16 : 6, height: 6, borderRadius: 3, background: i === photoIdx ? '#f76e7e' : 'rgba(255,255,255,0.3)', transition: 'all 0.2s' }} />
                 ))}
               </div>
@@ -214,12 +231,12 @@ export default function RecordDetailPage() {
       {showDeleteModal && (
         <>
           <div className="overlay-bg" onClick={() => setShowDeleteModal(false)} />
-          <div className="modal-center">
+          <div className="modal-center page-enter">
             <h3 style={{ fontSize: 18, fontWeight: 700, color: '#191F28', marginBottom: 8, textAlign: 'center' }}>기록을 삭제할까요?</h3>
             <p style={{ fontSize: 14, color: '#8B95A1', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>이 기록을 삭제하면 복구할 수 없어요.</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, background: '#F4F6F8', color: '#191F28', border: 'none', borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600 }}>취소</button>
-              <button onClick={handleDelete} style={{ flex: 1, background: '#f76e7e', color: 'white', border: 'none', borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600 }}>삭제</button>
+              <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, background: '#F4F6F8', color: '#191F28', border: 'none', borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>취소</button>
+              <button onClick={handleDelete} style={{ flex: 1, background: '#f76e7e', color: 'white', border: 'none', borderRadius: 12, padding: 14, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>삭제</button>
             </div>
           </div>
         </>

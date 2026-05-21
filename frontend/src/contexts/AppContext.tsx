@@ -1,391 +1,284 @@
-/**
- * LovePin AppContext
- * Design: Emotional Minimalism — manages auth state, couple status, records
- */
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
+// API 규격 스펙 적용 고정 타입
 export type RecordTag = '여행' | '일상' | '데이트';
-export type RecordType = '커플 기록' | '개별 기록';
-export type CoupleStatus = 'solo' | 'pending_sent' | 'pending_received' | 'coupled';
+export type RecordType = 'COUPLE' | 'INDIVIDUAL';
+export type MatchingState = 'NONE' | 'PENDING_SENT' | 'PENDING_RECEIVED';
+export type AppMode = 'personal' | 'couple';
 
 export interface MemoryRecord {
-  id: string;
+  recordId: number;
   title: string;
-  place: string;
-  address: string;
+  content: string;
   visitDate: string;
-  photos: string[];
-  representativePhoto: number;
+  placeName: string;
+  placeAddress: string;
+  latitude: number;
+  longitude: number;
   tags: RecordTag[];
   recordType: RecordType;
-  content: string;
-  author: string;
+  authorNickname: string | null; // COUPLE 기록일 땐 null 처리 규칙 준수
+  canEdit: boolean;
+  canDelete: boolean;
   createdAt: string;
   updatedAt: string;
-  lat: number;
-  lng: number;
-  district: string;
+  photos: {
+    imageId: number;
+    imageUrl: string;
+    isRepresentative: boolean;
+    sequence: number;
+  }[];
 }
 
 export interface Notification {
-  id: string;
-  type: 'matching_request' | 'matching_accepted' | 'matching_rejected' | 'matching_expired' | 'couple_record_added' | 'couple_record_edited' | 'dday_changed' | 'disconnected';
+  notificationId: number;
+  type: 
+    | 'MATCH_REQUEST' | 'MATCH_ACCEPTED' | 'MATCH_REJECTED' | 'MATCH_EXPIRED'
+    | 'LINK_DISCONNECTED' | 'ACCOUNT_DELETED' 
+    | 'COUPLE_RECORD_CREATED' | 'COUPLE_RECORD_UPDATED' | 'COUPLE_RECORD_DELETED'
+    | 'DDAY_UPDATED';
   message: string;
-  read: boolean;
+  isRead: boolean;
+  senderId?: number;
+  senderNickname?: string;
+  senderProfileImgUrl?: string;
+  requestId?: number;
+  recordId?: number | null;
+  coupleId?: number | null;
   createdAt: string;
-  relatedRecordId?: string;
 }
 
-export interface User {
-  id: string;
-  nickname: string;
+export interface UserProfile {
+  userId: number;
   email: string;
-  accountType: 'general' | 'kakao';
-  profileImage: string;
-  coupleCode: string;
-  notificationsEnabled: boolean;
+  nickname: string;
+  profileImgUrl: string;
+  provider: 'LOCAL' | 'KAKAO';
+  uniqueCode?: string;
+  pushEnabled?: boolean;
+  createdAt?: string;
 }
 
 interface AppState {
   isLoggedIn: boolean;
-  currentUser: User | null;
-  partner: User | null;
-  coupleStatus: CoupleStatus;
-  dday: string | null;
+  mode: AppMode;
+  matchingState: MatchingState;
+  myProfile: UserProfile | null;
+  partnerProfile: UserProfile | null;
+  coupleId: number | null;
+  dDayDate: string | null;
+  dDayCount: number | null;
   records: MemoryRecord[];
   notifications: Notification[];
   activeTab: string;
+  pendingRequest: { requestId: number; receiverNickname: string; expiredAt: string; } | null;
+  receivedRequest: { requestId: number; senderNickname: string; senderProfileImgUrl: string; } | null;
 }
 
 interface AppContextType extends AppState {
   login: (email: string, password: string) => boolean;
   logout: () => void;
-  register: (email: string, password: string, nickname: string) => void;
   setActiveTab: (tab: string) => void;
-  addRecord: (record: Omit<MemoryRecord, 'id' | 'createdAt' | 'updatedAt' | 'author'>) => MemoryRecord;
-  updateRecord: (id: string, record: Partial<MemoryRecord>) => void;
-  deleteRecord: (id: string) => void;
-  sendMatchRequest: (code: string) => boolean;
-  cancelMatchRequest: () => void;
-  acceptMatch: () => void;
-  rejectMatch: () => void;
-  disconnect: () => void;
-  setDday: (date: string) => void;
-  markNotificationRead: (id: string) => void;
-  setCoupleStatus: (status: CoupleStatus) => void;
+  addRecord: (formData: FormData) => void; // Multipart Form-Data 형식 대응 준비
+  updateRecord: (recordId: number, formData: FormData) => void;
+  deleteRecord: (recordId: number) => void;
+  sendMatchRequest: (uniqueCode: string) => boolean;
+  cancelMatchRequest: (requestId: number) => void;
+  acceptMatch: (requestId: number) => void;
+  rejectMatch: (requestId: number) => void;
+  disconnectCouple: (coupleId: number) => void;
+  setDday: (coupleId: number, dDayDate: string) => void;
+  markNotificationRead: (notificationId: number) => void;
 }
 
+const AppContext = createContext<AppContextType | null>(null);
+
+// 더미 데이터 주소 유지
 const PROFILE_YEBIN = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663666287881/a6vhHtyQsDTNyBG78iJnQM/lovepin-profile-yebin-3wx5KTinu6MNpvGiMwjpKs.webp';
 const PROFILE_MINJI = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663666287881/a6vhHtyQsDTNyBG78iJnQM/lovepin-profile-minji-HEM4UzKTBWf5odDuob9E4v.webp';
 const CAFE_IMG = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663666287881/a6vhHtyQsDTNyBG78iJnQM/lovepin-memory-cafe-YoutCYFe6tHz66i2VDGW3W.webp';
 
 const DUMMY_RECORDS: MemoryRecord[] = [
   {
-    id: '1',
+    recordId: 1,
     title: '서울숲 산책한 날',
-    place: '서울숲',
-    address: '서울 성동구 뚝섬로 273',
-    visitDate: '2025-04-12',
-    photos: [
-      'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&q=80',
-      'https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=400&q=80',
-      CAFE_IMG,
-    ],
-    representativePhoto: 0,
-    tags: ['데이트', '일상'],
-    recordType: '커플 기록',
     content: '봄날 서울숲에서 함께 산책했어요. 벚꽃이 정말 예뻤고 날씨도 너무 좋았어요.',
-    author: '예빈',
-    createdAt: '2025-04-12T14:30:00',
-    updatedAt: '2025-04-12T14:30:00',
-    lat: 37.5445,
-    lng: 127.0374,
-    district: '성동구',
-  },
-  {
-    id: '2',
-    title: '처음 같이 간 카페',
-    place: '성수 카페거리',
-    address: '서울 성동구 성수이로 77',
-    visitDate: '2025-03-20',
-    photos: [
-      CAFE_IMG,
-      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&q=80',
-    ],
-    representativePhoto: 0,
-    tags: ['데이트'],
-    recordType: '커플 기록',
-    content: '처음으로 함께 간 카페. 라떼가 정말 맛있었어요.',
-    author: '예빈',
-    createdAt: '2025-03-20T11:00:00',
-    updatedAt: '2025-03-20T11:00:00',
-    lat: 37.5448,
-    lng: 127.0558,
-    district: '성동구',
-  },
-  {
-    id: '3',
-    title: '한강에서 본 노을',
-    place: '한강공원',
-    address: '서울 영등포구 여의동로 330',
-    visitDate: '2025-03-14',
-    photos: [
-      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80',
-      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80',
-    ],
-    representativePhoto: 0,
+    visitDate: '2025-04-12',
+    placeName: '서울숲',
+    placeAddress: '서울 성동구 뚝섬로 273',
+    latitude: 37.5445,
+    longitude: 127.0374,
     tags: ['데이트', '일상'],
-    recordType: '커플 기록',
-    content: '한강에서 노을을 봤어요. 정말 아름다웠어요.',
-    author: '민지',
-    createdAt: '2025-03-14T18:30:00',
-    updatedAt: '2025-03-14T18:30:00',
-    lat: 37.5283,
-    lng: 126.9322,
-    district: '영등포구',
-  },
-  {
-    id: '4',
-    title: '주말 데이트 기록',
-    place: '경복궁',
-    address: '서울 종로구 사직로 161',
-    visitDate: '2025-02-22',
+    recordType: 'COUPLE',
+    authorNickname: null,
+    canEdit: true,
+    canDelete: true,
+    createdAt: '2025-04-12T14:30:00Z',
+    updatedAt: '2025-04-12T14:30:00Z',
     photos: [
-      'https://images.unsplash.com/photo-1548115184-bc6544d06a58?w=400&q=80',
-    ],
-    representativePhoto: 0,
-    tags: ['여행', '데이트'],
-    recordType: '커플 기록',
-    content: '경복궁 나들이. 한복 입고 사진도 찍었어요.',
-    author: '예빈',
-    createdAt: '2025-02-22T10:00:00',
-    updatedAt: '2025-02-22T10:00:00',
-    lat: 37.5796,
-    lng: 126.9770,
-    district: '종로구',
+      { imageId: 11, imageUrl: 'https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=400&q=80', isRepresentative: true, sequence: 1 },
+      { imageId: 12, imageUrl: 'https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=400&q=80', isRepresentative: false, sequence: 2 },
+      { imageId: 13, imageUrl: CAFE_IMG, isRepresentative: false, sequence: 3 }
+    ]
   },
   {
-    id: '5',
+    recordId: 5,
     title: '비 오는 날의 연남동',
-    place: '연남동 골목길',
-    address: '서울 마포구 연남동',
-    visitDate: '2025-01-30',
-    photos: [
-      'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=400&q=80',
-      'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=400&q=80',
-    ],
-    representativePhoto: 0,
-    tags: ['일상', '데이트'],
-    recordType: '개별 기록',
     content: '비 오는 날 연남동 골목을 걸었어요.',
-    author: '예빈',
-    createdAt: '2025-01-30T16:00:00',
-    updatedAt: '2025-01-30T16:00:00',
-    lat: 37.5617,
-    lng: 126.9239,
-    district: '마포구',
-  },
+    visitDate: '2025-01-30',
+    placeName: '연남동 골목길',
+    placeAddress: '서울 마포구 연남동',
+    latitude: 37.5617,
+    longitude: 126.9239,
+    tags: ['일상', '데이트'],
+    recordType: 'INDIVIDUAL',
+    authorNickname: '예빈',
+    canEdit: true,
+    canDelete: true,
+    createdAt: '2025-01-30T16:00:00Z',
+    updatedAt: '2025-01-30T16:00:00Z',
+    photos: [
+      { imageId: 51, imageUrl: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=400&q=80', isRepresentative: true, sequence: 1 }
+    ]
+  }
 ];
-
-const DUMMY_NOTIFICATIONS: Notification[] = [
-  {
-    id: 'n1',
-    type: 'couple_record_added',
-    message: '민지님이 커플 기록을 새로 작성했어요.',
-    read: false,
-    createdAt: '2025-04-12T15:00:00',
-    relatedRecordId: '1',
-  },
-  {
-    id: 'n2',
-    type: 'matching_accepted',
-    message: '민지님이 매칭 요청을 수락했어요.',
-    read: true,
-    createdAt: '2025-03-14T10:00:00',
-  },
-  {
-    id: 'n3',
-    type: 'dday_changed',
-    message: '디데이가 변경되었어요.',
-    read: true,
-    createdAt: '2025-03-14T10:05:00',
-  },
-];
-
-const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>({
     isLoggedIn: false,
-    currentUser: null,
-    partner: {
-      id: 'minji',
+    mode: 'couple',
+    matchingState: 'NONE',
+    myProfile: null,
+    partnerProfile: {
+      userId: 2,
       nickname: '민지',
       email: 'minji@example.com',
-      accountType: 'general',
-      profileImage: PROFILE_MINJI,
-      coupleCode: 'MINJI-2025',
-      notificationsEnabled: true,
+      provider: 'GENERAL' as any,
+      profileImgUrl: PROFILE_MINJI,
+      uniqueCode: 'MINJI123'
     },
-    coupleStatus: 'coupled',
-    dday: '2025-03-14',
+    coupleId: 5,
+    dDayDate: '2025-03-14',
+    dDayCount: 434, // 2026년 기준 D-Day 일수 자동 추산 가안
     records: DUMMY_RECORDS,
-    notifications: DUMMY_NOTIFICATIONS,
+    notifications: [],
     activeTab: 'timeline',
+    pendingRequest: null,
+    receivedRequest: null,
   });
 
   const login = useCallback((email: string, _password: string): boolean => {
-    if (email === 'yebin@example.com' || email === 'test@test.com' || email.includes('@')) {
-      setState(prev => ({
-        ...prev,
-        isLoggedIn: true,
-        currentUser: {
-          id: 'yebin',
-          nickname: '예빈',
-          email,
-          accountType: 'general',
-          profileImage: PROFILE_YEBIN,
-          coupleCode: 'YEBIN-2025',
-          notificationsEnabled: true,
-        },
-      }));
-      return true;
-    }
-    return false;
+    setState(prev => ({
+      ...prev,
+      isLoggedIn: true,
+      myProfile: {
+        userId: 1,
+        nickname: '예빈',
+        email,
+        provider: 'LOCAL',
+        profileImgUrl: PROFILE_YEBIN,
+        uniqueCode: 'ab12cd34'
+      }
+    }));
+    return true;
   }, []);
 
   const logout = useCallback(() => {
-    setState(prev => ({ ...prev, isLoggedIn: false, currentUser: null, activeTab: 'timeline' }));
-  }, []);
-
-  const register = useCallback((_email: string, _password: string, _nickname: string) => {
-    // Registration handled in UI, redirects to login
+    setState(prev => ({ ...prev, isLoggedIn: false, myProfile: null, activeTab: 'timeline' }));
   }, []);
 
   const setActiveTab = useCallback((tab: string) => {
     setState(prev => ({ ...prev, activeTab: tab }));
   }, []);
 
-  const addRecord = useCallback((record: Omit<MemoryRecord, 'id' | 'createdAt' | 'updatedAt' | 'author'>): MemoryRecord => {
+  const addRecord = useCallback((formData: FormData) => {
+    // 실제 백엔드 연동을 위한 규격 뼈대 매핑
+    const title = formData.get('title') as string;
     const newRecord: MemoryRecord = {
-      ...record,
-      id: String(Date.now()),
-      author: '예빈',
+      recordId: Date.now(),
+      title: title || '새로운 기록',
+      content: (formData.get('content') as string) || '',
+      visitDate: (formData.get('visitDate') as string) || '2026-05-21',
+      placeName: (formData.get('placeName') as string) || '미정 장소',
+      placeAddress: (formData.get('address') as string) || '',
+      latitude: Number(formData.get('latitude')) || 37.5665,
+      longitude: Number(formData.get('longitude')) || 126.9780,
+      tags: ['일상'], 
+      recordType: (formData.get('recordType') as RecordType) || 'INDIVIDUAL',
+      authorNickname: formData.get('recordType') === 'COUPLE' ? null : '예빈',
+      canEdit: true,
+      canDelete: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      photos: [{ imageId: Date.now() + 1, imageUrl: CAFE_IMG, isRepresentative: true, sequence: 1 }]
     };
     setState(prev => ({ ...prev, records: [newRecord, ...prev.records] }));
-    return newRecord;
   }, []);
 
-  const updateRecord = useCallback((id: string, updates: Partial<MemoryRecord>) => {
+  const updateRecord = useCallback((id: number, _formData: FormData) => {
     setState(prev => ({
       ...prev,
-      records: prev.records.map(r => r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r),
+      records: prev.records.map(r => r.recordId === id ? { ...r, updatedAt: new Date().toISOString() } : r),
     }));
   }, []);
 
-  const deleteRecord = useCallback((id: string) => {
-    setState(prev => ({ ...prev, records: prev.records.filter(r => r.id !== id) }));
+  const deleteRecord = useCallback((id: number) => {
+    setState(prev => ({ ...prev, records: prev.records.filter(r => r.recordId !== id) }));
   }, []);
 
   const sendMatchRequest = useCallback((code: string): boolean => {
-    if (!code || code === 'YEBIN-2025') return false;
-    setState(prev => ({ ...prev, coupleStatus: 'pending_sent' }));
+    if (!code || code === 'ab12cd34') return false;
+    setState(prev => ({
+      ...prev,
+      matchingState: 'PENDING_SENT',
+      pendingRequest: { requestId: 7, receiverNickname: '민지', expiredAt: '2026-05-28T12:00:00Z' }
+    }));
     return true;
   }, []);
 
-  const cancelMatchRequest = useCallback(() => {
-    setState(prev => ({ ...prev, coupleStatus: 'solo' }));
+  const cancelMatchRequest = useCallback((_requestId: number) => {
+    setState(prev => ({ ...prev, matchingState: 'NONE', pendingRequest: null }));
   }, []);
 
-  const acceptMatch = useCallback(() => {
+  const acceptMatch = useCallback((_requestId: number) => {
+    setState(prev => ({ ...prev, mode: 'couple', matchingState: 'NONE', receivedRequest: null }));
+  }, []);
+
+  const rejectMatch = useCallback((_requestId: number) => {
+    setState(prev => ({ ...prev, matchingState: 'NONE', receivedRequest: null }));
+  }, []);
+
+  const disconnectCouple = useCallback((_coupleId: number) => {
+    setState(prev => ({ ...prev, mode: 'personal', dDayDate: null, dDayCount: null }));
+  }, []);
+
+  const setDday = useCallback((_coupleId: number, date: string) => {
+    setState(prev => ({ ...prev, dDayDate: date, dDayCount: 1 }));
+  }, []);
+
+  const markNotificationRead = useCallback((id: number) => {
     setState(prev => ({
       ...prev,
-      coupleStatus: 'coupled',
-      notifications: [
-        {
-          id: String(Date.now()),
-          type: 'matching_accepted',
-          message: '민지님이 매칭 요청을 수락했어요.',
-          read: false,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev.notifications,
-      ],
+      notifications: prev.notifications.map(n => n.notificationId === id ? { ...n, isRead: true } : n),
     }));
-  }, []);
-
-  const rejectMatch = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      coupleStatus: 'solo',
-      notifications: [
-        {
-          id: String(Date.now()),
-          type: 'matching_rejected',
-          message: '매칭 요청이 거절되었어요.',
-          read: false,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev.notifications,
-      ],
-    }));
-  }, []);
-
-  const disconnect = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      coupleStatus: 'solo',
-      dday: null,
-      notifications: [
-        {
-          id: String(Date.now()),
-          type: 'disconnected',
-          message: '민지님과의 연결이 해제되었어요.',
-          read: false,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev.notifications,
-      ],
-    }));
-  }, []);
-
-  const setDday = useCallback((date: string) => {
-    setState(prev => ({
-      ...prev,
-      dday: date,
-      notifications: [
-        {
-          id: String(Date.now()),
-          type: 'dday_changed',
-          message: '디데이가 변경되었어요.',
-          read: false,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev.notifications,
-      ],
-    }));
-  }, []);
-
-  const markNotificationRead = useCallback((id: string) => {
-    setState(prev => ({
-      ...prev,
-      notifications: prev.notifications.map(n => n.id === id ? { ...n, read: true } : n),
-    }));
-  }, []);
-
-  const setCoupleStatus = useCallback((status: CoupleStatus) => {
-    setState(prev => ({ ...prev, coupleStatus: status }));
   }, []);
 
   return (
     <AppContext.Provider value={{
       ...state,
-      login, logout, register, setActiveTab,
-      addRecord, updateRecord, deleteRecord,
-      sendMatchRequest, cancelMatchRequest, acceptMatch, rejectMatch,
-      disconnect, setDday, markNotificationRead, setCoupleStatus,
+      login, 
+      logout, 
+      setActiveTab,
+      addRecord, 
+      updateRecord, 
+      deleteRecord,
+      sendMatchRequest, 
+      cancelMatchRequest, 
+      acceptMatch, 
+      rejectMatch,
+      disconnectCouple, 
+      setDday, 
+      markNotificationRead
     }}>
       {children}
     </AppContext.Provider>

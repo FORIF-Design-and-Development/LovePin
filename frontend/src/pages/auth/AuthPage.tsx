@@ -1,5 +1,5 @@
 /**
- * LovePin Auth Pages
+ * LovePin Auth Pages (API Integrated Structure)
  * Design: Emotional Minimalism — clean login/register screens
  * Screens: Landing → Login / Register → Login
  */
@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useApp } from '@/contexts/AppContext';
 
+// 로고 이미지는 기존 경로 유지
 import LogoImage from '../../assets/LovePin____png__-1.png';
 
 type AuthScreen = 'landing' | 'login' | 'register' | 'kakao-register' | 'register-complete' | 'forgot-password';
@@ -63,67 +64,24 @@ function LandingScreen({ onLogin, onRegister }: { onLogin: () => void; onRegiste
         />
       </div>
 
-      {/* Title */}
-      <h1 style={{
-        fontSize: 36,
-        fontWeight: 700,
-        color: '#e9334f',
-        letterSpacing: '-1.5px',
-        marginBottom: 8,
-        fontFamily: 'GmarketSans, var(--font-logo)',
-        textShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
-      }}>
+      <h1 style={{ fontSize: 36, fontWeight: 700, color: '#e9334f', letterSpacing: '-1.5px', marginBottom: 8, fontFamily: 'GmarketSans, var(--font-logo)', textShadow: '0 2px 4px rgba(0, 0, 0, 0.08)' }}>
         LovePin
       </h1>
 
-      {/* Description */}
-      <p style={{
-        fontSize: 14,
-        color: '#8B95A1',
-        textAlign: 'center',
-        lineHeight: 1.3,
-        marginBottom: 48,
-      }}>
+      <p style={{ fontSize: 14, color: '#8B95A1', textAlign: 'center', lineHeight: 1.3, marginBottom: 48 }}>
         우리가 함께한 모든 순간을<br />지도 위에 기록해요
       </p>
 
-      {/* CTA Button */}
       <button
         onClick={onRegister}
-        style={{
-          width: '100%',
-          maxWidth: 300,
-          background: 'linear-gradient(135deg, #f45d75 0%, #e9334f 100%)',
-          color: 'white',
-          borderRadius: 14,
-          fontWeight: 700,
-          fontSize: 15,
-          padding: 14,
-          border: 'none',
-          transition: 'all 0.15s',
-          marginBottom: 14,
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-        }}
+        style={{ width: '100%', maxWidth: 300, background: 'linear-gradient(135deg, #f45d75 0%, #e9334f 100%)', color: 'white', borderRadius: 14, fontWeight: 700, fontSize: 15, padding: 14, border: 'none', marginBottom: 14, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)', cursor: 'pointer' }}
       >
         회원가입
       </button>
 
-      {/* Login Link */}
       <p style={{ fontSize: 13, color: '#191F28', textAlign: 'center' }}>
         이미 계정이 있나요?{' '}
-        <button
-          onClick={onLogin}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#e9334f',
-            fontWeight: 700,
-            fontSize: 13,
-            padding: 0,
-            textDecoration: 'underline',
-            cursor: 'pointer',
-          }}
-        >
+        <button onClick={onLogin} style={{ background: 'none', border: 'none', color: '#e9334f', fontWeight: 700, fontSize: 13, padding: 0, textDecoration: 'underline', cursor: 'pointer' }}>
           로그인
         </button>
       </p>
@@ -134,20 +92,21 @@ function LandingScreen({ onLogin, onRegister }: { onLogin: () => void; onRegiste
 function LoginScreen({ onBack, onRegister, onForgot, onLogin }: { onBack: () => void; onRegister: () => void; onForgot: () => void; onLogin: (email: string, pw: string) => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [autoLogin, setAutoLogin] = useState(true); // API 스펙 반영 (refresh_token 발급용)
   const [error, setError] = useState('');
 
   const handleLogin = () => {
     if (!email || !password) { setError('이메일과 비밀번호를 입력해주세요.'); return; }
-    const ok = true; // demo: always succeed
+    // TODO: 실제 API (POST /api/auth/login) 연동 시 autoLogin 값 전송 필요
+    const ok = true; 
     if (ok) { onLogin(email, password); }
     else { setError('이메일 또는 비밀번호가 올바르지 않아요.'); }
   };
 
   return (
     <div style={{ minHeight: '100dvh', background: 'white', padding: '0 24px' }} className="page-enter">
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '16px 0 8px' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 8, marginLeft: -8 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 8, marginLeft: -8, cursor: 'pointer' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
       </div>
@@ -159,34 +118,32 @@ function LoginScreen({ onBack, onRegister, onForgot, onLogin }: { onBack: () => 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 8 }}>
           <div>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>이메일</label>
-            <input
-              className="lp-input"
-              type="email"
-              placeholder="이메일을 입력하세요"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setError(''); }}
-            />
+            <input className="lp-input" type="email" placeholder="이메일을 입력하세요" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} />
           </div>
           <div>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>비밀번호</label>
-            <input
-              className="lp-input"
-              type="password"
-              placeholder="비밀번호를 입력하세요"
-              value={password}
-              onChange={e => { setPassword(e.target.value); setError(''); }}
-              onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            />
+            <input className="lp-input" type="password" placeholder="비밀번호를 입력하세요" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} onKeyDown={e => e.key === 'Enter' && handleLogin()} />
           </div>
         </div>
 
         {error && <p style={{ fontSize: 13, color: '#f76e7e', marginBottom: 12 }}>{error}</p>}
 
-        <button onClick={onForgot} style={{ background: 'none', border: 'none', color: '#8B95A1', fontSize: 13, marginBottom: 24, padding: 0 }}>
-          비밀번호를 잊으셨나요?
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="checkbox" checked={autoLogin} onChange={e => setAutoLogin(e.target.checked)} style={{ accentColor: '#f76e7e' }} />
+            <span style={{ fontSize: 13, color: '#8B95A1' }}>자동 로그인</span>
+          </label>
+          <button onClick={onForgot} style={{ background: 'none', border: 'none', color: '#8B95A1', fontSize: 13, padding: 0, cursor: 'pointer' }}>
+            비밀번호를 잊으셨나요?
+          </button>
+        </div>
 
-        <button className="btn-primary" onClick={handleLogin} style={{ marginBottom: 16 }}>로그인</button>
+        <button 
+          style={{ width: '100%', background: '#f76e7e', color: 'white', padding: '14px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', marginBottom: 16 }}
+          onClick={handleLogin}
+        >
+          로그인
+        </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1, height: 1, background: '#E5E8EB' }} />
@@ -195,7 +152,7 @@ function LoginScreen({ onBack, onRegister, onForgot, onLogin }: { onBack: () => 
         </div>
 
         <button
-          style={{ background: '#FEE500', color: '#191F28', borderRadius: 14, fontWeight: 600, fontSize: 16, padding: 16, width: '100%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 32 }}
+          style={{ background: '#FEE500', color: '#191F28', borderRadius: 14, fontWeight: 600, fontSize: 16, padding: 16, width: '100%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 32, cursor: 'pointer' }}
           onClick={handleLogin}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="#191F28"><path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.636 1.627 4.952 4.07 6.306L5.2 20.1a.5.5 0 0 0 .72.55l4.43-2.96A11.5 11.5 0 0 0 12 18c5.523 0 10-3.477 10-7.5S17.523 3 12 3z"/></svg>
@@ -204,7 +161,7 @@ function LoginScreen({ onBack, onRegister, onForgot, onLogin }: { onBack: () => 
 
         <p style={{ textAlign: 'center', fontSize: 14, color: '#8B95A1' }}>
           아직 계정이 없으신가요?{' '}
-          <button onClick={onRegister} style={{ background: 'none', border: 'none', color: '#f76e7e', fontWeight: 600, fontSize: 14, padding: 0 }}>회원가입</button>
+          <button onClick={onRegister} style={{ background: 'none', border: 'none', color: '#f76e7e', fontWeight: 600, fontSize: 14, padding: 0, cursor: 'pointer' }}>회원가입</button>
         </p>
       </div>
     </div>
@@ -212,31 +169,49 @@ function LoginScreen({ onBack, onRegister, onForgot, onLogin }: { onBack: () => 
 }
 
 function RegisterScreen({ onBack, onComplete, onKakao }: { onBack: () => void; onComplete: () => void; onKakao: () => void }) {
-  const [form, setForm] = useState({ email: '', password: '', passwordConfirm: '', nickname: '' });
+  // API 스펙 (이메일 인증 흐름) 반영
+  const [form, setForm] = useState({ email: '', code: '', password: '', passwordConfirm: '', nickname: '' });
+  const [isCodeSent, setIsCodeSent] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const validate = () => {
+  const handleSendCode = () => {
+    if (!form.email.includes('@')) { setErrors({ email: '올바른 이메일 형식을 입력해주세요.' }); return; }
+    // TODO: POST /api/auth/email/send-code 연동
+    setIsCodeSent(true);
+    setErrors({});
+  };
+
+  const handleVerifyCode = () => {
+    if (form.code.length < 4) { setErrors({ code: '올바른 인증 코드를 입력해주세요.' }); return; }
+    // TODO: POST /api/auth/email/verify-code 연동
+    setIsEmailVerified(true);
+    setErrors({});
+  };
+
+  const validateSubmit = () => {
     const e: Record<string, string> = {};
-    if (!form.email.includes('@')) e.email = '올바른 이메일 형식을 입력해주세요.';
+    if (!isEmailVerified) e.email = '이메일 인증이 필요합니다.';
     if (form.password.length < 8) e.password = '비밀번호는 8자 이상이어야 해요.';
     if (form.password !== form.passwordConfirm) e.passwordConfirm = '비밀번호가 일치하지 않아요.';
     if (!form.nickname) e.nickname = '닉네임을 입력해주세요.';
     return e;
   };
 
-  const isValid = form.email && form.password && form.passwordConfirm && form.nickname && agreed && Object.keys(validate()).length === 0;
+  const isValid = isEmailVerified && form.password && form.passwordConfirm && form.nickname && agreed;
 
   const handleSubmit = () => {
-    const e = validate();
+    const e = validateSubmit();
     if (Object.keys(e).length > 0) { setErrors(e); return; }
+    // TODO: POST /api/auth/register 연동
     onComplete();
   };
 
   return (
     <div style={{ minHeight: '100dvh', background: 'white', padding: '0 24px 40px' }} className="page-enter">
       <div style={{ display: 'flex', alignItems: 'center', padding: '16px 0 8px' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 8, marginLeft: -8 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 8, marginLeft: -8, cursor: 'pointer' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
       </div>
@@ -245,24 +220,49 @@ function RegisterScreen({ onBack, onComplete, onKakao }: { onBack: () => void; o
       <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 32 }}>LovePin에 오신 것을 환영해요</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-        {[
-          { key: 'email', label: '이메일', type: 'email', placeholder: '이메일을 입력하세요' },
-          { key: 'password', label: '비밀번호', type: 'password', placeholder: '8자 이상 입력하세요' },
-          { key: 'passwordConfirm', label: '비밀번호 확인', type: 'password', placeholder: '비밀번호를 다시 입력하세요' },
-          { key: 'nickname', label: '닉네임', type: 'text', placeholder: '닉네임을 입력하세요' },
-        ].map(field => (
-          <div key={field.key}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>{field.label}</label>
-            <input
-              className="lp-input"
-              type={field.type}
-              placeholder={field.placeholder}
-              value={form[field.key as keyof typeof form]}
-              onChange={e => { setForm(prev => ({ ...prev, [field.key]: e.target.value })); setErrors(prev => ({ ...prev, [field.key]: '' })); }}
-            />
-            {errors[field.key] && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{errors[field.key]}</p>}
+        {/* 이메일 및 인증 코드 영역 */}
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>이메일</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input className="lp-input" type="email" placeholder="이메일을 입력하세요" value={form.email} onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))} disabled={isEmailVerified} style={{ flex: 1 }} />
+            {!isEmailVerified && (
+              <button onClick={handleSendCode} style={{ padding: '0 16px', borderRadius: 12, border: '1px solid #E5E8EB', background: 'white', fontSize: 13, fontWeight: 600, color: '#4E5968', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {isCodeSent ? '재발송' : '인증요청'}
+              </button>
+            )}
           </div>
-        ))}
+          {errors.email && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{errors.email}</p>}
+        </div>
+
+        {isCodeSent && !isEmailVerified && (
+          <div className="page-enter">
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="lp-input" type="text" placeholder="인증 코드 6자리" value={form.code} onChange={e => setForm(prev => ({ ...prev, code: e.target.value }))} style={{ flex: 1 }} />
+              <button onClick={handleVerifyCode} style={{ padding: '0 16px', borderRadius: 12, border: 'none', background: '#f76e7e', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>확인</button>
+            </div>
+            {errors.code && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{errors.code}</p>}
+          </div>
+        )}
+
+        {isEmailVerified && (
+          <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>비밀번호 (8자 이상, 영문/숫자/특수문자 포함)</label>
+              <input className="lp-input" type="password" placeholder="비밀번호를 입력하세요" value={form.password} onChange={e => { setForm(prev => ({ ...prev, password: e.target.value })); setErrors(prev => ({ ...prev, password: '' })); }} />
+              {errors.password && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{errors.password}</p>}
+            </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>비밀번호 확인</label>
+              <input className="lp-input" type="password" placeholder="비밀번호를 다시 입력하세요" value={form.passwordConfirm} onChange={e => { setForm(prev => ({ ...prev, passwordConfirm: e.target.value })); setErrors(prev => ({ ...prev, passwordConfirm: '' })); }} />
+              {errors.passwordConfirm && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{errors.passwordConfirm}</p>}
+            </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>닉네임</label>
+              <input className="lp-input" type="text" placeholder="닉네임을 입력하세요" value={form.nickname} onChange={e => { setForm(prev => ({ ...prev, nickname: e.target.value })); setErrors(prev => ({ ...prev, nickname: '' })); }} />
+              {errors.nickname && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{errors.nickname}</p>}
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 24, padding: '16px', background: '#F4F6F8', borderRadius: 12 }}>
@@ -273,12 +273,11 @@ function RegisterScreen({ onBack, onComplete, onKakao }: { onBack: () => void; o
       </div>
 
       <button
-        className="btn-primary"
+        style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: isValid ? 'pointer' : 'default', background: isValid ? '#f76e7e' : '#E5E8EB', color: isValid ? 'white' : '#8B95A1', marginBottom: 16 }}
         onClick={handleSubmit}
         disabled={!isValid}
-        style={{ background: isValid ? '#f76e7e' : '#E5E8EB', color: isValid ? 'white' : '#8B95A1', marginBottom: 16 }}
       >
-        회원가입
+        회원가입 완료
       </button>
 
       {/* Divider */}
@@ -288,24 +287,7 @@ function RegisterScreen({ onBack, onComplete, onKakao }: { onBack: () => void; o
         <div style={{ flex: 1, height: 1, background: '#E5E8EB' }} />
       </div>
 
-      {/* Kakao Signup Button */}
-      <button
-        onClick={onKakao}
-        style={{
-          background: '#FEE500',
-          color: '#191F28',
-          borderRadius: 14,
-          fontWeight: 600,
-          fontSize: 16,
-          padding: 16,
-          width: '100%',
-          border: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-        }}
-      >
+      <button onClick={onKakao} style={{ background: '#FEE500', color: '#191F28', borderRadius: 14, fontWeight: 600, fontSize: 16, padding: 16, width: '100%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="#191F28"><path d="M12 3C6.477 3 2 6.477 2 10.5c0 2.636 1.627 4.952 4.07 6.306L5.2 20.1a.5.5 0 0 0 .72.55l4.43-2.96A11.5 11.5 0 0 0 12 18c5.523 0 10-3.477 10-7.5S17.523 3 12 3z"/></svg>
         카카오로 간편 회원가입
       </button>
@@ -320,7 +302,7 @@ function KakaoRegisterScreen({ onBack, onComplete }: { onBack: () => void; onCom
   return (
     <div style={{ minHeight: '100dvh', background: 'white', padding: '0 24px 40px' }} className="page-enter">
       <div style={{ display: 'flex', alignItems: 'center', padding: '16px 0 8px' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 8, marginLeft: -8 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 8, marginLeft: -8, cursor: 'pointer' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
       </div>
@@ -344,7 +326,7 @@ function KakaoRegisterScreen({ onBack, onComplete }: { onBack: () => void; onCom
         </label>
       </div>
 
-      <button className="btn-primary" onClick={onComplete} disabled={!agreed || !nickname} style={{ background: agreed && nickname ? '#f76e7e' : '#E5E8EB', color: agreed && nickname ? 'white' : '#8B95A1' }}>
+      <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: agreed && nickname ? 'pointer' : 'default', background: agreed && nickname ? '#f76e7e' : '#E5E8EB', color: agreed && nickname ? 'white' : '#8B95A1' }} onClick={onComplete} disabled={!agreed || !nickname}>
         가입 완료
       </button>
     </div>
@@ -359,43 +341,105 @@ function RegisterCompleteScreen({ onConfirm }: { onConfirm: () => void }) {
       </div>
       <h2 style={{ fontSize: 22, fontWeight: 700, color: '#191F28', marginBottom: 8, letterSpacing: '-0.5px' }}>회원가입이 완료되었어요.</h2>
       <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 48, textAlign: 'center' }}>이제 연인과 함께 소중한 기록을 남겨보세요</p>
-      <button className="btn-primary" onClick={onConfirm}>로그인하러 가기</button>
+      <button style={{ width: '100%', background: '#f76e7e', color: 'white', padding: '14px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer' }} onClick={onConfirm}>로그인하러 가기</button>
     </div>
   );
 }
 
 function ForgotPasswordScreen({ onBack }: { onBack: () => void }) {
-  const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  // API 스펙 (비밀번호 변경 흐름) 반영
+  const [form, setForm] = useState({ email: '', code: '', newPassword: '', newPasswordConfirm: '' });
+  const [step, setStep] = useState<'request' | 'verify' | 'reset' | 'done'>('request');
+  const [error, setError] = useState('');
+
+  const handleSendCode = () => {
+    if (!form.email.includes('@')) { setError('올바른 이메일 형식을 입력해주세요.'); return; }
+    // TODO: POST /api/auth/email/send-code (purpose: PASSWORD_RESET) 연동
+    setError('');
+    setStep('verify');
+  };
+
+  const handleVerifyCode = () => {
+    if (form.code.length < 4) { setError('인증 코드를 확인해주세요.'); return; }
+    // TODO: POST /api/auth/email/verify-code 연동
+    setError('');
+    setStep('reset');
+  };
+
+  const handleResetPassword = () => {
+    if (form.newPassword.length < 8) { setError('비밀번호는 8자 이상이어야 해요.'); return; }
+    if (form.newPassword !== form.newPasswordConfirm) { setError('비밀번호가 일치하지 않아요.'); return; }
+    // TODO: PATCH /api/auth/password/reset 연동
+    setError('');
+    setStep('done');
+  };
 
   return (
     <div style={{ minHeight: '100dvh', background: 'white', padding: '0 24px' }} className="page-enter">
       <div style={{ display: 'flex', alignItems: 'center', padding: '16px 0 8px' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 8, marginLeft: -8 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 8, marginLeft: -8, cursor: 'pointer' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#191F28" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
         </button>
       </div>
+      
       <h1 style={{ fontSize: 26, fontWeight: 700, color: '#191F28', marginBottom: 8, letterSpacing: '-0.5px', marginTop: 24 }}>비밀번호 찾기</h1>
-      <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 32 }}>가입한 이메일로 재설정 링크를 보내드려요</p>
-
-      {!sent ? (
-        <>
+      
+      {step === 'request' && (
+        <div className="page-enter">
+          <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 32 }}>가입한 이메일로 인증 코드를 보내드려요</p>
           <div style={{ marginBottom: 24 }}>
             <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>이메일</label>
-            <input className="lp-input" type="email" placeholder="이메일을 입력하세요" value={email} onChange={e => setEmail(e.target.value)} />
+            <input className="lp-input" type="email" placeholder="이메일을 입력하세요" value={form.email} onChange={e => { setForm(prev => ({ ...prev, email: e.target.value })); setError(''); }} />
+            {error && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{error}</p>}
           </div>
-          <button className="btn-primary" onClick={() => setSent(true)} disabled={!email.includes('@')} style={{ background: email.includes('@') ? '#f76e7e' : '#E5E8EB', color: email.includes('@') ? 'white' : '#8B95A1' }}>
-            재설정 링크 보내기
+          <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: form.email.includes('@') ? 'pointer' : 'default', background: form.email.includes('@') ? '#f76e7e' : '#E5E8EB', color: form.email.includes('@') ? 'white' : '#8B95A1' }} onClick={handleSendCode} disabled={!form.email.includes('@')}>
+            인증 코드 발송
           </button>
-        </>
-      ) : (
-        <div style={{ textAlign: 'center', paddingTop: 40 }}>
+        </div>
+      )}
+
+      {step === 'verify' && (
+        <div className="page-enter">
+          <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 32 }}>이메일로 전송된 코드를 입력해주세요</p>
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>인증 코드</label>
+            <input className="lp-input" type="text" placeholder="인증 코드 6자리" value={form.code} onChange={e => { setForm(prev => ({ ...prev, code: e.target.value })); setError(''); }} />
+            {error && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{error}</p>}
+          </div>
+          <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', background: '#f76e7e', color: 'white' }} onClick={handleVerifyCode}>
+            코드 확인
+          </button>
+        </div>
+      )}
+
+      {step === 'reset' && (
+        <div className="page-enter">
+          <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 32 }}>새로운 비밀번호를 설정해주세요</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>새 비밀번호</label>
+              <input className="lp-input" type="password" placeholder="새 비밀번호 입력" value={form.newPassword} onChange={e => { setForm(prev => ({ ...prev, newPassword: e.target.value })); setError(''); }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#191F28', display: 'block', marginBottom: 6 }}>새 비밀번호 확인</label>
+              <input className="lp-input" type="password" placeholder="비밀번호 다시 입력" value={form.newPasswordConfirm} onChange={e => { setForm(prev => ({ ...prev, newPasswordConfirm: e.target.value })); setError(''); }} />
+              {error && <p style={{ fontSize: 12, color: '#f76e7e', marginTop: 4 }}>{error}</p>}
+            </div>
+          </div>
+          <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', background: '#f76e7e', color: 'white' }} onClick={handleResetPassword}>
+            비밀번호 변경
+          </button>
+        </div>
+      )}
+
+      {step === 'done' && (
+        <div className="page-enter" style={{ textAlign: 'center', paddingTop: 20 }}>
           <div style={{ width: 64, height: 64, background: '#FFF0F1', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f76e7e" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           </div>
-          <p style={{ fontSize: 16, fontWeight: 600, color: '#191F28', marginBottom: 8 }}>이메일을 확인해주세요</p>
-          <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 40 }}>{email}로 재설정 링크를 보냈어요</p>
-          <button className="btn-primary" onClick={onBack}>로그인으로 돌아가기</button>
+          <p style={{ fontSize: 16, fontWeight: 600, color: '#191F28', marginBottom: 8 }}>비밀번호가 변경되었습니다</p>
+          <p style={{ fontSize: 14, color: '#8B95A1', marginBottom: 40 }}>새로운 비밀번호로 로그인해주세요</p>
+          <button style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', fontSize: 16, fontWeight: 700, cursor: 'pointer', background: '#f76e7e', color: 'white' }} onClick={onBack}>로그인으로 돌아가기</button>
         </div>
       )}
     </div>

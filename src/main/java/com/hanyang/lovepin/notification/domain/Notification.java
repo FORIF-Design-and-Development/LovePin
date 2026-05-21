@@ -1,7 +1,7 @@
 package com.hanyang.lovepin.notification.domain;
 
 import com.hanyang.lovepin.couple.domain.Couple;
-import com.hanyang.lovepin.couple.presentation.CoupleRequest;
+import com.hanyang.lovepin.couple.domain.CoupleRequest;
 import com.hanyang.lovepin.member.domain.User;
 import com.hanyang.lovepin.record.domain.Record;
 import jakarta.persistence.*;
