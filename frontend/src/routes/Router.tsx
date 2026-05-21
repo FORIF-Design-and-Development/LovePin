@@ -1,26 +1,41 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 
-import LoginPage from '../pages/LoginPage';
-import SignupPage from '../pages/SignupPage';
-import TimelinePage from '../pages/TimelinePage';
-import RecordCreatePage from '../pages/RecordCreatePage';
-import MapPage from '../pages/MapPage';
-import CouplePage from '../pages/CouplePage';
+import AppLayout from '../layouts/AppLayout';
+import AuthPage from '../pages/auth/AuthPage';
+import CouplePage from '../pages/couple/CouplePage';
+import MapPage from '../pages/map/MapPage';
+import RecordDetailPage from '../pages/record/RecordDetailPage';
+import RecordEditPage from '../pages/record/RecordEditPage';
+import RecordNewPage from '../pages/record/RecordNewPage';
+import SettingsPage from '../pages/settings/SettingsPage';
+import TimelinePage from '../pages/timeline/TimelinePage';
+import { RequireAuth } from './RequireAuth';
 
-function Router() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/timeline" replace />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/timeline" element={<TimelinePage />} />
-        <Route path="/records/new" element={<RecordCreatePage />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/couple" element={<CouplePage />} />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-export default Router;
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Navigate to="/auth" replace />,
+  },
+  {
+    path: '/auth',
+    element: <AuthPage />,
+  },
+  {
+    path: '/app',
+    element: (
+      <RequireAuth>
+        <AppLayout />
+      </RequireAuth>
+    ),
+    children: [
+      { index: true, element: <Navigate to="/app/timeline" replace /> },
+      { path: 'timeline', element: <TimelinePage /> },
+      { path: 'map', element: <MapPage /> },
+      { path: 'record/new', element: <RecordNewPage /> },
+      { path: 'record/:id', element: <RecordDetailPage /> },
+      { path: 'record/:id/edit', element: <RecordEditPage /> },
+      { path: 'couple', element: <CouplePage /> },
+      { path: 'settings', element: <SettingsPage /> },
+    ],
+  },
+]);
