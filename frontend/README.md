@@ -63,6 +63,10 @@ npm run lint
 | `src/routes/` | `BrowserRouter` 및 `Routes` 정의 |
 | `src/apis/` | Axios 인스턴스 및 API 모듈 |
 
+## 배포
+
+프론트는 백엔드(EB)와 **별도**로 S3에 올립니다. CI/CD·시크릿·CORS 설정은 [DEPLOY.md](./DEPLOY.md)를 참고하세요.
+
 ## 참고
 
 - [Vite](https://vite.dev/)
