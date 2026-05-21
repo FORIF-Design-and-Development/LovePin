@@ -1,4 +1,4 @@
-package com.hanyang.lovepin.couple.presentation;
+package com.hanyang.lovepin.couple.domain;
 
 import com.hanyang.lovepin.member.domain.User;
 import jakarta.persistence.*;
