@@ -2,6 +2,17 @@
 
 React 19 · TypeScript · Vite 8 기반입니다.
 
+## 배포 URL (dev)
+
+| 구분 | URL | 비고 |
+|------|-----|------|
+| **프론트 (웹)** | https://lovepin.hee.io.kr | 사용자 접속 주소 (CORS **Origin**) |
+| **API** | https://lovepin-api.hee.io.kr | axios `VITE_API_BASE_URL` 대상 |
+
+로컬 개발: http://localhost:5173
+
+상세 배포·시크릿·CORS: [DEPLOY.md](./DEPLOY.md)
+
 ## 스택
 
 - **React Router** — 클라이언트 라우팅 (`src/routes/Router.tsx`)
@@ -17,10 +28,15 @@ npm install
 
 ### 환경 변수
 
-1. `frontend/.env.example`을 참고해 `frontend/.env`를 만듭니다. (이미 있으면 생략)
-2. `VITE_API_BASE_URL`에 백엔드 API 베이스 URL을 넣습니다.  
-   예: `VITE_API_BASE_URL=http://lovepin-api.ap-northeast-2.elasticbeanstalk.com`  
-   `.env`는 Git에 올리지 않습니다. 팀원은 각자 로컬에만 둡니다.
+1. `frontend/.env.example`을 참고해 `frontend/.env`를 만듭니다.
+2. `VITE_API_BASE_URL`에 **API 서버 베이스 URL**을 넣습니다 (끝에 `/` 없음).
+
+```env
+VITE_API_BASE_URL=https://lovepin-api.hee.io.kr
+```
+
+- `.env`는 **git에 올리지 않습니다** (`.gitignore`). 팀원은 각자 로컬에만 둡니다.
+- **배포(S3) 빌드**는 GitHub Actions에서 돌아가므로, 로컬 `.env`만으로는 CI에 반영되지 않습니다. 저장소 Secret `VITE_API_BASE_URL`에 같은 값을 넣는 것을 권장합니다.
 
 ### 개발 서버
 
@@ -33,6 +49,13 @@ npm run dev
 ```bash
 npm run build
 npm run preview
+```
+
+로컬 빌드 확인 (PowerShell):
+
+```powershell
+$env:VITE_API_BASE_URL="https://lovepin-api.hee.io.kr"
+npm run build
 ```
 
 ### 린트
@@ -65,9 +88,11 @@ npm run lint
 
 ## 배포
 
-프론트는 백엔드(EB)와 **별도**로 S3에 올립니다. CI/CD·시크릿·CORS 설정은 [DEPLOY.md](./DEPLOY.md)를 참고하세요.
+프론트는 백엔드(EB)와 **별도**로 S3에 올리고, CloudFront·커스텀 도메인으로 제공합니다.  
+CI/CD·시크릿·CORS: [DEPLOY.md](./DEPLOY.md)
 
 ## 참고
 
 - [Vite](https://vite.dev/)
 - [Tailwind CSS](https://tailwindcss.com/docs)
+- 프로젝트 전체 개요: [../README.md](../README.md)
