@@ -1,48 +1,66 @@
 # LovePin 프론트 배포 (S3 + GitHub Actions)
 
-백엔드와 같이 **AWS + GitHub Actions**를 쓰는 방식입니다. (Vercel/Amplify 콘솔 설정 없이 레포만으로 CI/CD)
+백엔드와 같이 **AWS + GitHub Actions**로 배포합니다.
+
+## 배포 URL (dev, 현재)
+
+| 구분 | URL |
+|------|-----|
+| **프론트 (사용자 접속)** | https://lovepin.hee.io.kr |
+| **API** | https://lovepin-api.hee.io.kr |
+
+멘토/인프라에서 설정한 값 (팀 내부 참고):
+
+| 이름 | 용도 |
+|------|------|
+| `FRONTEND_S3_BUCKET` | GitHub Actions → `aws s3 sync` 대상 버킷 (예: `lovepin-frontend-dev`) |
+| `FRONTEND_URL` | 팀 공유용 프론트 주소 (= 위 `https://lovepin.hee.io.kr`). 코드/시크릿 이름은 아님 |
+
+---
 
 ## 구조
 
 | 구분 | 배포 대상 | 트리거 |
 |------|-----------|--------|
 | 백엔드 | Elastic Beanstalk | `dev` push + `src/**` 등 변경 |
-| 프론트 | S3 (`dist/` 정적 파일) | `dev` push + `frontend/**` 변경 |
+| 프론트 | S3 (`dist/` 정적 파일) → CloudFront → 커스텀 도메인 | `dev` push + `frontend/**` 변경 |
 
-연동: 빌드 시 `VITE_API_BASE_URL` → 배포된 EB API 주소.  
-배포 후 **백엔드 CORS**에 프론트 URL을 추가해야 브라우저에서 API 호출 가능.
+**연동**
+
+1. 프론트 빌드 시 `VITE_API_BASE_URL` → `https://lovepin-api.hee.io.kr` (axios baseURL)
+2. 백엔드 `WebConfig.java` CORS `allowedOrigins`에 프론트 Origin `https://lovepin.hee.io.kr` 포함
+
+프론트 Origin과 API Origin은 **호스트가 다른 두 URL**입니다. 브라우저 cross-origin 규칙 때문에 CORS 설정이 필요합니다.
 
 ---
 
-## 1. AWS 1회 설정 (백엔드/인프라 담당)
+## 1. AWS (인프라 담당, 1회)
 
 ### S3 버킷
 
-1. 리전: 백엔드와 동일 (`ap-northeast-2` 권장)
-2. 버킷 이름 예: `lovepin-frontend` (전역 유일 이름 필요)
-3. **정적 웹 사이트 호스팅** 활성화  
-   - 인덱스 문서: `index.html`  
-   - 오류 문서: `index.html` (React Router SPA용)
-4. 버킷 정책: 퍼블릭 읽기 또는 CloudFront OAC 사용
+- 리전: `ap-northeast-2` 권장
+- 버킷명: 팀에서 정한 이름 (예: `lovepin-frontend-dev`)
+- SPA: 인덱스·오류 문서 `index.html`
+- CloudFront Origin으로 연결
 
-### (권장) CloudFront
+### CloudFront + 도메인
 
 - Origin: 위 S3 버킷
-- HTTPS URL 예: `https://d1234abcd.cloudfront.net`
+- 커스텀 도메인·SSL: `https://lovepin.hee.io.kr`
 - SPA: 403/404 → `/index.html` (200) 커스텀 에러 응답
 
-### IAM
-
-기존 GitHub Actions용 IAM 사용자에 추가 권한:
+### IAM (GitHub Actions용)
 
 - `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` (프론트 버킷)
-- (CloudFront 사용 시) `cloudfront:CreateInvalidation`
+- (선택) `cloudfront:CreateInvalidation`
 
 ---
 
-## 2. GitHub Secrets (저장소 Settings → Secrets)
+## 2. GitHub Secrets
 
-백엔드와 **공유**:
+**Settings → Secrets and variables → Actions**
+
+### 백엔드·AWS 공통
 
 | Secret | 예시 |
 |--------|------|
@@ -50,52 +68,73 @@
 | `AWS_SECRET_ACCESS_KEY` | (기존) |
 | `AWS_REGION` | `ap-northeast-2` |
 
-**프론트 추가**:
+### 프론트 배포 필수
+
+| Secret | 값 (현재 dev 기준) |
+|--------|---------------------|
+| `FRONTEND_S3_BUCKET` | 실제 S3 버킷명 (멘토 제공) |
+| `VITE_API_BASE_URL` | `https://lovepin-api.hee.io.kr` |
+
+### 프론트 배포 선택
 
 | Secret | 값 |
 |--------|-----|
-| `VITE_API_BASE_URL` | `http://lovepin-api.ap-northeast-2.elasticbeanstalk.com` |
-| `FRONTEND_S3_BUCKET` | `lovepin-frontend` (실제 버킷명) |
-| `CLOUDFRONT_DISTRIBUTION_ID` | (선택) CloudFront 배포 ID |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CloudFront 배포 ID (캐시 무효화) |
+
+### 로컬 `.env` vs Secret
+
+| | `frontend/.env` | GitHub Secret `VITE_API_BASE_URL` |
+|--|-----------------|-----------------------------------|
+| 용도 | `npm run dev`, 로컬 `npm run build` | Actions의 `npm run build` (S3에 올라가는 번들) |
+| Git | **올리지 않음** (`.gitignore`) | 저장소 Secret에만 저장 |
+| 필수 여부 | 로컬 개발 시 필수 | **CI 배포 시 권장·사실상 필수** |
+
+`.env`를 gitignore에 넣은 것은 **보안·개인 설정 분리**로 올바릅니다. 다만 그것만으로는 **GitHub Actions 빌드에 API URL이 전달되지 않습니다.** 배포 프론트에 API 주소를 박으려면 Secret `VITE_API_BASE_URL`을 추가하세요.
+
+워크플로 참고: `.github/workflows/deploy-frontend.yml` Build 단계의 `env.VITE_API_BASE_URL`.
 
 ---
 
-## 3. 백엔드 CORS (필수)
+## 3. 백엔드 CORS
 
-`WebConfig.java`의 `allowedOrigins`에 **배포된 프론트 Origin** 추가:
+`src/main/java/com/hanyang/lovepin/config/WebConfig.java`:
 
 ```java
 .allowedOrigins(
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://YOUR-CLOUDFRONT-DOMAIN.cloudfront.net"  // 또는 S3 웹사이트 URL
+    "https://lovepin.hee.io.kr"
 )
 ```
 
-HTTPS CloudFront를 쓰면 **http가 아닌 https Origin**을 넣어야 합니다.
+- Origin은 **스킴+호스트+포트**만 (경로·슬래시 없음)
+- 커스텀 도메인은 **https** 사용
+
+`src/**` 변경을 `dev`에 머지하면 백엔드 EB 배포 워크플로가 실행됩니다.
 
 ---
 
 ## 4. 배포 방법
 
-`dev` 브랜치에 `frontend/` 변경을 push하면  
-`.github/workflows/deploy-frontend.yml` 이 자동 실행됩니다.
+`dev`에 `frontend/` 또는 `deploy-frontend.yml` 변경을 push → **Deploy Frontend (S3)** 실행.
 
-로컬에서 빌드만 확인:
+로컬 빌드 확인:
 
 ```bash
 cd frontend
 npm ci
+```
+
+```powershell
 # Windows PowerShell
-$env:VITE_API_BASE_URL="http://lovepin-api.ap-northeast-2.elasticbeanstalk.com"
+$env:VITE_API_BASE_URL="https://lovepin-api.hee.io.kr"
 npm run build
 ```
 
 ---
 
-## 5. 접속 URL
+## 5. 배포 후 확인
 
-- CloudFront 있음: `https://xxxx.cloudfront.net`
-- S3 웹사이트만: `http://버킷명.s3-website.ap-northeast-2.amazonaws.com`
-
-팀에 공유할 **프론트 URL**은 위 중 하나입니다.
+- [ ] https://lovepin.hee.io.kr 접속·라우팅(SPA) 정상
+- [ ] 브라우저 Network에서 API 요청이 `lovepin-api.hee.io.kr`로 가고 CORS 오류 없음
+- [ ] Secret `VITE_API_BASE_URL` 설정 후 프론트 재배포(필요 시)
