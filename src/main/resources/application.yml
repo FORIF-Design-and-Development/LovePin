@@ -20,6 +20,10 @@ logging:
   level:
     org.hibernate.SQL: debug
 
+# HS256: 32자 이상 랜덤 문자열 (GitHub Secret / EB 환경 변수 JWT_SECRET)
+jwt:
+  secret: ${JWT_SECRET}
+
 cloud:
   aws:
     credentials:
