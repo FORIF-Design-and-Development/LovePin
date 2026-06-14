@@ -1,55 +1,110 @@
-# LovePin
+#### 1. 로그인
 
-커플의 장소·기록을 남기는 서비스입니다. 모노레포로 **백엔드(Spring Boot)** 와 **프론트(React + Vite)** 가 함께 있습니다.
+* 일반 / 카카오 간편 회원 가입 및 로그인
 
-## 배포 URL (dev)
+<table>
+  <tr>
+    <td><img src="./docs/images/1_login.png" width="260" /></td>
+    <td><img src="./docs/images/2_login.png" width="260" /></td>
+    <td><img src="./docs/images/3_login.png" width="260" /></td>
+  </tr>
+</table>
 
-| 구분 | URL |
-|------|-----|
-| **프론트 (웹)** | https://lovepin.hee.io.kr |
-| **API (백엔드)** | https://lovepin-api.hee.io.kr |
+#### 2. 연인 관계 관리
 
-- 로컬 프론트: http://localhost:5173
-- API 경로 예: `GET https://lovepin-api.hee.io.kr/api/members/health`
+##### 2-1. 연인 매칭 전 개인 모드
 
-프론트에서 API를 호출하려면 백엔드 CORS에 프론트 Origin(`https://lovepin.hee.io.kr`)이 허용되어 있어야 합니다.
+* 상대방의 고유 코드를 입력하여 매칭 요청 가능 (본인 코드 입력 불가)
+* 매칭 수신, 매칭 대기 등의 알림 확인 가능
 
-## 레포 구조
+<table>
+  <tr>
+    <td><img src="./docs/images/4_love.png" width="260" /></td>
+    <td><img src="./docs/images/5_love.png" width="260" /></td>
+  </tr>
+</table>
 
-| 경로 | 설명 |
-|------|------|
-| `src/main/java/` | Spring Boot API (Elastic Beanstalk 배포) |
-| `frontend/` | React 19 + TypeScript + Vite (S3 + CloudFront 배포) |
-| `.github/workflows/` | `deploy.yml`(백엔드), `deploy-frontend.yml`(프론트) |
+##### 2-2. 연인 매칭 상태 커플 모드
 
-## 시작하기
+* 자신과 상대방의 프로필 확인 가능
+* D-Day 설정 및 수정 가능
+* 연결 해제 가능
+* 연인 관련 기록 알림, D-Day, 매칭 관련 알림 확인 가능
 
-### 백엔드
+<table>
+  <tr>
+    <td><img src="./docs/images/6_love.png" width="260" /></td>
+    <td><img src="./docs/images/7_love.png" width="260" /></td>
+  </tr>
+</table>
 
-JDK 17, Gradle. `dev` 브랜치 push 시 EB로 자동 배포됩니다. (워크플로: `.github/workflows/deploy.yml`)
+#### 3. 타임라인
 
-### 프론트
+* 연인과 본인이 작성한 기록을 상하 스크롤 타임라인 형식으로 확인 가능
+* 태그, 위치, 작성 기간 필터링 가능
+* 기록 클릭 시 상세 페이지로 이동
 
-```bash
-cd frontend
-npm install
-cp .env.example .env   # Windows: copy .env.example .env
-npm run dev
-```
+<table>
+  <tr>
+    <td><img src="./docs/images/8_timeline.png" width="260" /></td>
+    <td><img src="./docs/images/9_timeline.png" width="260" /></td>
+  </tr>
+</table>
 
-환경 변수·배포·시크릿: [frontend/README.md](./frontend/README.md), [frontend/DEPLOY.md](./frontend/DEPLOY.md)
+#### 4. 지도
 
-## CI/CD 요약
+* 위치마다 군집으로 묶어 대표 사진으로 위치 핀 표시
+* 확대 정도에 따라 위치 핀을 세분화하여 표시 (시/군 → 구/동 → 상세 위치)
+* 기록 유형 (커플 기록/개별 기록) 필터링 가능
+* 위치 핀 클릭 시 해당 핀 군집의 기록 카드 확인 가능
+* 기록 카드 하단 상세보기 클릭 시 상세 페이지로 이동
 
-| 대상 | 트리거 | 브랜치 |
-|------|--------|--------|
-| 백엔드 EB | `src/**` 등 변경 push | `dev` |
-| 프론트 S3 | `frontend/**` 변경 push | `dev` |
+<table>
+  <tr>
+    <td><img src="./docs/images/10_map.png" width="260" /></td>
+    <td><img src="./docs/images/11_map.png" width="260" /></td>
+    <td><img src="./docs/images/12_map.png" width="260" /></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/images/13_map.png" width="260" /></td>
+    <td><img src="./docs/images/14_map.png" width="260" /></td>
+  </tr>
+</table>
 
-## 환경 변수 (프론트만)
+#### 5. 상세 페이지
 
-| 변수 | 로컬 | GitHub Actions (배포 빌드) |
-|------|------|---------------------------|
-| `VITE_API_BASE_URL` | `frontend/.env` (git 제외) | Secret `VITE_API_BASE_URL` 권장 |
+* 해당 기록의 제목, 본문, 위치, 작성 날짜, 태그, 사진 등 상세 정보를 확인
+* 커플 기록의 경우 연인이 작성한 기록 수정 및 삭제 가능
 
-`.env`를 gitignore에 넣은 것은 **로컬 개발용**으로 맞습니다. 배포 파이프라인은 Actions 러너에서 빌드하므로, 팀 시크릿에 `VITE_API_BASE_URL`을 두는 것이 좋습니다. (없으면 빌드 시 API 주소가 비어 배포 번들이 잘못될 수 있습니다.)
+<table>
+  <tr>
+    <td><img src="./docs/images/15_page.png" width="260" /></td>
+    <td><img src="./docs/images/16_page.png" width="260" /></td>
+  </tr>
+</table>
+
+#### 6. 새 기록 추가
+
+* 제목, 사진, 방문 날짜, 장소, 태그, 기록 유형, 본문 정보를 작성하여 기록 추가 가능
+* 작성 완료 시 타임라인, 지도 탭에 추가
+* 기록 작성 및 수정 시 상대방 연인에게 알림 전송
+
+<table>
+  <tr>
+    <td><img src="./docs/images/16_new.png" width="260" /></td>
+    <td><img src="./docs/images/17_new.png" width="260" /></td>
+  </tr>
+</table>
+
+#### 7. 설정
+
+* 프로필, 이메일, 비밀번호 변경 가능
+* 알림 설정
+* 로그아웃 및 계정 삭제
+
+<table>
+  <tr>
+    <td><img src="./docs/images/18_setting.png" width="260" /></td>
+    <td><img src="./docs/images/19_setting.png" width="260" /></td>
+  </tr>
+</table>
