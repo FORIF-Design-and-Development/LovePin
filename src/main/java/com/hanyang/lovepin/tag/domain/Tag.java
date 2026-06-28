@@ -27,7 +27,9 @@ public class Tag {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public enum TagName {
-        일상, 여행, 데이트
+    public Tag(Long tagId, TagName tagName, LocalDateTime createdAt) {
+        this.tagId = tagId;
+        this.tagName = tagName;
+        this.createdAt = createdAt;
     }
 }
